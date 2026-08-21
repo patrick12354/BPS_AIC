@@ -19,7 +19,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { WARNING_TEXT } from "../../lib/format.js";
-import { ActionCard, BenchmarkCard, DataQualityCard, OpportunityCard, VisualFindings } from "../insight.jsx";
+import {
+  ActionCard,
+  BenchmarkCard,
+  ContradictionCard,
+  DataQualityCard,
+  OpportunityCard,
+  VisualFindings,
+} from "../insight.jsx";
+import { ArchivePanel } from "./ArchivePanel.jsx";
 import { SummaryHead } from "../report/Figures.jsx";
 import { AspectSections } from "../report/Aspects.jsx";
 import { PeriodChart } from "../report/Periods.jsx";
@@ -149,11 +157,15 @@ function Rel({ bagian }) {
   );
 }
 
-export function ReportPanel({ result, category, decisions, onDecide, onOpenEvidence }) {
+export function ReportPanel({ result, category, rentang, decisions, onDecide, onOpenEvidence }) {
   const punyaProduk = (result.products ?? []).length > 0;
   const punyaRiwayat = Boolean(result.period_history);
   const punyaBintang = Boolean(result.ratings);
   const peluang = result.opportunities ?? [];
+  // Kosong selama jalur visual belum lolos gerbangnya. Bagiannya ikut hilang dari rel -
+  // bagian berlabel "foto membantah teksnya" yang selalu kosong terbaca sebagai
+  // kerusakan, bukan sebagai ketiadaan.
+  const kontra = result.contradictions ?? [];
   const benchmark = result.benchmark_by_category?.[category] ?? result.benchmark ?? [];
 
   // Rel dan isi digambar dari SATU daftar. Dua daftar terpisah adalah cara paling pasti
@@ -172,11 +184,16 @@ export function ReportPanel({ result, category, decisions, onDecide, onOpenEvide
         { id: "lap-produk", judul: "Per produk", ada: punyaProduk },
         { id: "lap-bintang", judul: "Sebaran bintang", ada: punyaBintang },
         { id: "lap-riwayat", judul: "Riwayat", ada: punyaRiwayat },
+        { id: "lap-kontra", judul: "Foto vs teks", ada: kontra.length > 0 },
         { id: "lap-peluang", judul: "Peluang", ada: peluang.length > 0 },
         { id: "lap-banding", judul: "Benchmark", ada: benchmark.length > 0 },
         { id: "lap-mutu", judul: "Kualitas data", ada: Boolean(result.data_quality) },
+        { id: "lap-arsip", judul: "Simpan & bandingkan", ada: true },
       ].filter((b) => b.ada),
-    [punyaProduk, punyaBintang, punyaRiwayat, peluang.length, benchmark.length, result.data_quality]
+    [
+      punyaProduk, punyaBintang, punyaRiwayat, kontra.length, peluang.length,
+      benchmark.length, result.data_quality,
+    ]
   );
 
   return (
@@ -260,6 +277,18 @@ export function ReportPanel({ result, category, decisions, onDecide, onOpenEvide
           </Bagian>
         )}
 
+        {kontra.length > 0 && (
+          <Bagian
+            id="lap-kontra"
+            judul="Ulasan yang foto dan teksnya berlawanan"
+            ket="Ditandai untuk Anda periksa sendiri. Sistem sengaja tidak memutuskan mana yang benar."
+          >
+            {kontra.map((f) => (
+              <ContradictionCard key={f.review_id} finding={f} />
+            ))}
+          </Bagian>
+        )}
+
         {peluang.length > 0 && (
           <Bagian
             id="lap-peluang"
@@ -301,6 +330,17 @@ export function ReportPanel({ result, category, decisions, onDecide, onOpenEvide
             </section>
           </Bagian>
         )}
+
+        {/* Bagian terakhir, dan tempatnya memang di akhir: ia bukan temuan melainkan apa yang
+            dilakukan SESUDAH membaca temuan. Menaruhnya di atas akan menawarkan penyimpanan
+            sebelum ada yang layak disimpan. */}
+        <Bagian
+          id="lap-arsip"
+          judul="Simpan & bandingkan"
+          ket="Hasil ini hilang saat halaman ditutup - kami tidak menyimpan apa pun. Unduh arsipnya untuk dibandingkan di sesi berikutnya."
+        >
+          <ArchivePanel result={result} rentang={rentang} />
+        </Bagian>
       </div>
     </div>
   );

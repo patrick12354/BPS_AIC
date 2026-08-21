@@ -76,6 +76,29 @@ def lapis1_kesiapan() -> bool:
         print("       Jalankan: python scripts/download_checkpoint.py")
         sehat = False
 
+    # Kalibrasi diperiksa terpisah dari keberadaan checkpoint: checkpoint yang ada tetapi
+    # belum dikalibrasi berjalan normal, hanya angka keyakinannya tidak tampil di layar.
+    # Itu keadaan yang sah, jadi ia peringatan - bukan kegagalan.
+    from app.adapters.text_model import TextModelAdapter  # noqa: PLC0415
+
+    adapter = TextModelAdapter()
+    if adapter.calibrated:
+        print(OK + "Model terkalibrasi (T=%s) — angka keyakinan tampil di laporan"
+              % adapter.sentiment_temperature)
+    elif adapter.mode == "full":
+        print(WARN + "Checkpoint belum dikalibrasi — angka keyakinan disembunyikan dari UI.")
+        print("       Jalankan: python ml/text/calibrate.py")
+
+    # Jalur visual. Nonaktif adalah keadaan yang BENAR hari ini (gerbangnya belum lolos),
+    # jadi ia dilaporkan sebagai keterangan, bukan sebagai masalah yang perlu diperbaiki.
+    from app.adapters.vision_model import VisionModelAdapter  # noqa: PLC0415
+
+    visual = VisionModelAdapter()
+    if visual.active:
+        print(OK + "Jalur visual aktif (%s)" % visual.model_version)
+    else:
+        print(WARN + "Jalur visual nonaktif: %s" % visual.inactive_reason)
+
     try:
         from app.schemas.enums import verify_taxonomy_matches_config
 

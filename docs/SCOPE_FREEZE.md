@@ -121,3 +121,61 @@ setelah titik ini butuh persetujuan seluruh tim.
 
 **GO.** Taksonomi aspek dan kelas visual dikunci; tidak ada perubahan tertunda yang memblokir
 pekerjaan data dan baseline.
+
+## 8. Amandemen setelah audit - 21 Agustus 2026
+
+Freeze berarti perubahan **dicatat**, bukan dilarang. Dua fitur ditambahkan dan lima medan
+skema diperluas setelah audit sistem berjalan. Semuanya aditif; tidak ada medan lama yang
+berubah arti atau hilang, sehingga tidak ada pemanggil lama yang berubah perilakunya.
+
+**Fitur baru:**
+
+| Fitur | Endpoint | Alasan masuk setelah freeze |
+| --- | --- | --- |
+| `REP-01` Draf balasan penjual | `POST /api/v1/reply-drafts` | Menyeberangkan produk dari insight ke percakapan dengan pelanggan, di kanal yang belum tersentuh. Deterministik dan tanpa API luar, jadi tidak menyentuh satu pun batasan MVP: sinkron ✓, parameter statis ✓, tanpa background job ✓. **Bukan** generator konten marketing yang ada di daftar "tidak dibangun" - yang itu menulis iklan, ini menyiapkan balasan atas keluhan yang sudah ada, dan keputusan bisnisnya tetap di manusia. |
+| `TRC-01` Jejak perhitungan | `POST /api/v1/trace`, `POST /api/v1/analyze?trace=1` | Bukan fitur baru melainkan jalan keluar bagi data yang sudah dihitung. Klaim "angka tidak pernah dikarang" sebelumnya hanya dapat dipercaya; sekarang dapat diperiksa. |
+
+**Perluasan skema** (seluruhnya opsional dengan nilai baku):
+
+| Skema | Medan | Untuk |
+| --- | --- | --- |
+| `BenchmarkRecord` | `store_sample_size`, `store_margin_of_error`, `preliminary` | Temuan audit: keyakinan perbandingan sebelumnya hanya menimbang sisi baseline, sehingga toko 5 ulasan tampil "keyakinan tinggi". |
+| `ActionCard` | `trace` | Diisi hanya bila diminta; payload biasa tetap ramping. |
+| Skema baru | `ReplyDraft`, `ReplyDraftResponse`, `ActionTrace`, `TraceClause`, `TraceFactor` | Keluaran kedua fitur di atas. |
+
+Formula priority score **tidak berubah**. Satu perilakunya disesuaikan: modifier benchmark
+dinolkan saat perbandingannya berstatus `preliminary`, karena selisih yang tidak layak
+ditampilkan juga tidak layak menaikkan prioritas diam-diam.
+
+## 9. Amandemen kedua - pekerjaan Tingkat 3 (L1-L5)
+
+Lima proyek yang semula dijadwalkan pasca-penyisihan dikerjakan lebih awal. Tiga selesai penuh,
+dua selesai kodenya dan tertahan pada data yang belum ada. Semuanya dicatat di sini karena
+freeze berarti perubahan **terlihat**, bukan terlarang.
+
+| | Cakupan | Status | Yang menahan |
+| --- | --- | --- | --- |
+| **L1** | Temperature scaling per head, ECE sebelum/sesudah, ambang aspek digeser bersama suhunya, `confidence_calibrated` mengendalikan tampilnya angka keyakinan | Kode selesai, diuji pada logit sintetis | `models/indobert-nlp01/model.pt` + `clauses_val.csv` tidak ikut di-commit |
+| **L2** | Aturan agregasi klausa dipindah ke satu sumber (`ml/text/aggregate.py`), aturan produksi menjadi asimetris, evaluasi melaporkan kedua aturan berdampingan | Kode selesai, diuji | Angka pertukaran recall/presisi menunggu checkpoint |
+| **L3** | Artefak probe yang dapat dimuat backend, `VisionModelAdapter` yang **menjalankan vonis gerbang sebagai kode** | Kode selesai, diuji | Foto berlabel: ada 97 dari 2 produk, target ≥150 dari ≥3 produk |
+| **L4** | `ContradictionFinding` + kartu "foto membantah teksnya" dengan kedua bukti berdampingan | Kode selesai, diuji dengan sumber foto tiruan | L3, dan belum adanya jalan masuk foto produk ke analisis |
+| **L5** | Arsip agregat (`/archive`), perbandingan antar-periode (`/compare`), ekspor PNG sisi-klien | **Selesai dan berjalan** | - |
+
+**Endpoint baru:** `/api/v1/archive`, `/api/v1/compare`. Keduanya sinkron; `/compare` tidak
+menyimpan apa pun - arsip pembandingnya datang di badan permintaan.
+
+**Skema baru:** `AnalysisArchive`, `ArchiveAspect`, `ArchiveComparison`, `AspectDelta`,
+`ContradictionFinding`. Perluasan: `AnalysisResult.confidence_calibrated`,
+`AnalysisResult.contradictions`.
+
+**Yang berubah pada perilaku model:** `AspectPrediction.confidence` berhenti menjadi konstanta
+dan menjadi probabilitas sentimen (terkalibrasi bila bundle-nya membawa suhu). Karena kalibrasi
+tidak menggeser argmax, akurasi dan urutan Action Card tidak berubah - tetapi skor prioritas
+bergerak, karena `confidence_norm` adalah salah satu pengali intinya. Itu perubahan yang
+disengaja: skor yang sebelumnya dikalikan angka tetap kini dikalikan angka yang benar-benar
+berbeda antar-aspek.
+
+**Satu batas yang TIDAK dilanggar:** tidak ada endpoint unggah foto produk yang dibangun.
+Membangunnya menuntut penyimpanan sesi untuk gambar beserta kendali privasinya sendiri, untuk
+jalur yang gerbangnya belum lolos. Yang dipasang sebagai gantinya adalah cantelan
+`AnalyzeService(image_source=...)` - lihat docs/LIMITATIONS.md.

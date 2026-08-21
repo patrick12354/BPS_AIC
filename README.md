@@ -6,6 +6,24 @@ Subtema: Smart Commerce · Seluruh model berjalan lokal, CPU-friendly, tanpa API
 
 ---
 
+## Untuk juri: cara memeriksa sendiri, bukan mempercayai
+
+Setiap klaim di dokumen ini punya satu perintah yang membuktikan atau membantahnya. Tidak ada yang perlu diterima begitu saja.
+
+| Klaim | Cara memeriksanya |
+| --- | --- |
+| "Angka tidak pernah dikarang" | Buka kartu aksi mana pun di dashboard, tekan **"Bagaimana angka ini dihitung?"**. Panelnya menampilkan klausa mentah yang terbaca model, prediksi tiap klausa, agregasinya, dan tiap komponen rumus prioritas beserta aritmetikanya. Kalikan sendiri: hasilnya adalah skor yang tertera di kartu. Lewat API: `POST /api/v1/analyze?trace=1`. |
+| "Berjalan lokal, tanpa API berbayar" | Putus koneksi internet setelah container jalan, lalu analisis lagi. Tidak ada satu pun panggilan keluar di jalur inferensi. |
+| "Sistem gagal dengan anggun" | Kosongkan mount `./models`, nyalakan ulang. `GET /api/v1/readiness` menyebutkan persis apa yang sedang tidak aktif, dan analisis **tetap terbit** memakai jalur leksikon. |
+| "Versi model dapat diaudit" | `GET /api/v1/models` menyebut versi checkpoint teks, model embedding, dan status orchestrator. |
+| Angka evaluasi di bagian 11 | `python ml/text/evaluate_gold.py` (label manusia independen) dan `python ml/text/evaluate_external.py` (dataset publik). Gerbang visual: `python ml/visual/evaluate_gate.py`. |
+| "Keputusan selalu milik manusia" | Tidak ada nilai `executed` pada enum `UserAction`, dan `user_action` tidak pernah diisi sistem. Draf balasan pun menyisakan keputusan uang sebagai `[keputusan Anda: ...]` yang harus disunting sendiri. |
+| Batas yang diakui sendiri | `docs/LIMITATIONS.md` memuat kegagalan yang terukur, termasuk gerbang visual yang **tidak lolos** dan angka keyakinan model yang sengaja disembunyikan karena belum terkalibrasi. |
+| Angka keyakinan model | Tidak ditampilkan sampai benar-benar terkalibrasi. `AnalysisResult.confidence_calibrated` menentukannya, dan medannya dibaca dari isi checkpoint - bukan dari saklar konfigurasi. Metodenya di `docs/MODEL_CARD.md` bagian 9. |
+| Gerbang model visual dijalankan, bukan diingat | `VisionModelAdapter` membaca vonis gerbang dari artefak probe dan **menolak aktif** kalau isinya bukan GO. Vonis yang belum dikenal juga menolak. Diuji di `tests/unit/test_vision_gate.py`. |
+| "Riwayat antar-sesi tanpa database" | Unduh arsip di bagian terakhir laporan, buka `.json`-nya: angka agregat saja. Unggah kembali lewat "Bandingkan dengan sesi sebelumnya" - selisih yang tidak melampaui margin kesalahan gabungan ditandai "belum berarti", bukan dibaca sebagai keberhasilan. |
+| Seluruh perilaku di atas | `pytest tests -q` - 340 test, termasuk kasus yang menguji bahwa sistem MENOLAK menjawab saat buktinya tidak ada, dan bahwa arsip tidak pernah membawa satu kata pun dari ulasan. |
+
 ## Daftar isi
 
 1. [Ringkasan](#1-ringkasan)
@@ -51,7 +69,7 @@ Dikerjakan bertahap mengikuti Fase 0–10. Setiap fase punya *acceptance criteri
 | 2 | Model teks - fine-tuning IndoBERT | ✅ selesai | **Sentimen LULUS** (0,730 vs leksikon 0,700 pada label expert); **aspek TIDAK LULUS** - setara leksikon, lihat MODEL_CARD §4.3 |
 | 3 | Model visual - zero-shot CLIP, threshold, kalibrasi | ❌ **NO-GO** | argmax 45% kalah dari tebakan sepele 61%; jalur linear probe sudah ditulis dan siap dijalankan, menunggu foto tersedia kembali |
 | 4 | Retrieval & action engine (RET-01, ACT-01) | ✅ selesai | Action Card lolos spot-check anti-generik; RET-01 menolak menjawab saat bukti tak memadai |
-| 5 | Backend FastAPI - 7 endpoint, 10 tool contract | 🔄 berjalan | 7 endpoint jalan (termasuk OCR tangkapan layar); orchestrator belum, sistem berjalan di FALLBACK MODE |
+| 5 | Backend FastAPI - 11 endpoint, 16 tool contract | 🔄 berjalan | 11 endpoint jalan (termasuk OCR tangkapan layar, draf balasan, jejak perhitungan, arsip, dan perbandingan antar-periode); orchestrator belum, sistem berjalan di FALLBACK MODE |
 | 6 | Frontend React - landing + dashboard | 🔄 berjalan | Dua permukaan terpisah; alur unggah → proses → hasil (4 tab) terverifikasi di browser pada data contoh. Kotak FAQ non-AI di halaman pemasaran, 6 uji hijau ([bagian 7.1](#71-kotak-faq-di-halaman-pemasaran)) |
 | 7 | Integrasi - termasuk jalur kegagalan & fallback | ✅ selesai | 16 integration test hijau, mencakup enam jalur wajib bagian 32 |
 | 8 | Evaluasi penuh + error analysis | ⬜ belum | metrik tercatat apa adanya |
@@ -306,14 +324,18 @@ Jika total ulasan sesi < 15, seluruh Action Card diberi badge "confidence rendah
 
 Seluruh pertukaran antar komponen memakai JSON dengan field wajib/opsional/enum yang didefinisikan eksplisit. Tiga belas skema dikunci sejak Fase 0 supaya frontend dapat mulai dengan mock data sebelum backend selesai.
 
-**Skema inti:** `RawReview` · `ProcessedReview` · `ReviewImage` · `TextPrediction` · `VisualPrediction` · `MultimodalEvidence` · `AspectAggregate` · `BenchmarkRecord` · `ActionCard` · `EvidenceCitation` · `AnalysisResult` · `QnARequest/Response` · `ErrorResponse`
+**Skema inti:** `RawReview` · `ProcessedReview` · `ReviewImage` · `TextPrediction` · `VisualPrediction` · `MultimodalEvidence` · `AspectAggregate` · `BenchmarkRecord` · `ActionCard` · `EvidenceCitation` · `AnalysisResult` · `QnARequest/Response` · `ReplyDraft` · `ActionTrace` · `ErrorResponse`
 
 **Endpoint Tier 1:**
 
 | Endpoint | Method | Fungsi | Timeout |
 | --- | --- | --- | --- |
-| `/api/v1/analyze` | POST | Analisis penuh dari batch ulasan | 30s |
+| `/api/v1/analyze` | POST | Analisis penuh dari batch ulasan (`?trace=1` menyertakan jejak perhitungan) | 30s |
 | `/api/v1/questions` | POST | Q&A ter-ground pada hasil analisis | 8s |
+| `/api/v1/reply-drafts` | POST | Draf balasan penjual untuk ulasan pendukung satu Action Card | 1s |
+| `/api/v1/trace` | POST | Rantai klausa → agregat → skor untuk satu Action Card | 1s |
+| `/api/v1/archive` | POST | Ringkasan agregat yang aman dibawa keluar sesi (.json) | 1s |
+| `/api/v1/compare` | POST | Selisih antar-periode terhadap arsip milik pengguna sendiri | 1s |
 | `/api/v1/ocr` | POST | Baca teks ulasan dari tangkapan layar → **draf** untuk disunting | 60s |
 | `/api/v1/health` | GET | Proses backend hidup | 1s |
 | `/api/v1/readiness` | GET | Seluruh model selesai dimuat | 1s |
@@ -321,6 +343,16 @@ Seluruh pertukaran antar komponen memakai JSON dengan field wajib/opsional/enum 
 | `/api/v1/demo/sample` | GET | Dataset contoh untuk demo | 1s |
 
 `/api/v1/ocr` sengaja tidak menganalisis apa pun. Ia mengembalikan teks yang terbaca sebagai draf; analisis baru berjalan setelah pengguna memeriksanya dan menekan tombolnya sendiri. Pembacaan teks dari gambar tidak pernah sempurna, dan satu huruf yang salah baca merambat ke seluruh hasil - pemilik toko adalah satu-satunya yang tahu bunyi ulasan aslinya. Endpoint ini juga **tidak** menyimpulkan apa pun dari isi gambar; menilai kondisi barang dari foto masih NO-GO (bagian keterbatasan).
+
+`/api/v1/reply-drafts` menyusun balasan dari template berisi slot yang diisi data ulasan itu sendiri - deterministik, tanpa panggilan keluar. Dua permintaan atas kartu yang sama menghasilkan teks yang identik, dan variasinya dipilih lewat hash `review_id` alih-alih `random` supaya sifat itu tetap berlaku antar-run. Kalimat yang menuntut keputusan bisnis (ganti barang, refund, kompensasi) **tidak pernah diisi sistem**; ia terbit sebagai `[keputusan Anda: ...]` yang mengganggu untuk dibaca, dan tombol salin di antarmuka baru aktif setelah penggunanya menyunting teksnya sendiri.
+
+`/api/v1/trace` membuka isi perhitungan satu kartu: klausa apa yang terbaca model, prediksi aspek dan sentimen tiap klausa, bagaimana keduanya menjadi agregat, dan bagaimana agregat menjadi skor prioritas - lengkap dengan aritmetika tiap komponennya. Tidak ada satu pun angka baru di sana; yang ditunjukkan adalah perhitungan **yang sama** dengan yang menghasilkan kartunya, dibuka isinya. Klaim "angka kami tidak dikarang" karenanya berhenti menjadi klaim yang harus dipercaya.
+
+Keduanya membaca artefak sesi yang sama dengan Q&A - kartu, jejak, dan klausa negatifnya hidup di memori proses dengan satu masa kedaluwarsa (1 jam, maksimal 50 analisis). Setelah itu keduanya menolak dengan jujur alih-alih menghitung ulang, karena prediksi per klausa memang sudah tidak ada.
+
+`/api/v1/archive` dan `/api/v1/compare` memenuhi baris Roadmap "riwayat antar-sesi" **tanpa database**, dengan membalik siapa yang menyimpan. Pengguna mengunduh sekeping JSON berisi agregat saja - tidak ada teks ulasan, kutipan, id ulasan, maupun nama produk di dalamnya - lalu mengunggahnya kembali bulan depan sebagai pembanding. Arsipnya datang di badan permintaan; server tidak punya tempat mengambilnya dan tidak akan pernah punya. Kalimat "kami tidak menyimpan apa pun" karenanya berhenti menjadi keterbatasan yang harus dimaklumi dan menjadi bentuk kepemilikan.
+
+Selisih antar-periode **tidak pernah ditampilkan begitu saja**. Dua proporsi yang masing-masing bermargin kesalahan menghasilkan selisih yang marginnya lebih lebar dari keduanya, jadi "keluhan pengiriman turun 19% ke 8%" pada dua batch tiga puluhan ulasan bisa seluruhnya derau. Setiap baris membawa `significant`, dan yang tidak lolos ditandai "belum berarti" alih-alih dibaca sebagai keberhasilan.
 
 Tidak ada autentikasi pada Tier 1 - sesi tunggal, data tidak disimpan permanen.
 

@@ -72,6 +72,10 @@
   --on-medium: #5b3a00;
   --on-positive: #123016;
 
+  /* Latar lembut sewarna merah - pasangan `--blue-tint`, untuk kotak peringatan kecil
+   * yang butuh rona tanpa berat sebuah badge. */
+  --red-tint: #fbe7e4;
+
   /* Teks status di atas krem (bukan di dalam badge) - langkah gelapnya. */
   --red-ink: #a32c22;
   --amber-ink: #8a5200;
@@ -215,6 +219,7 @@
   --grad-blue: linear-gradient(180deg, #5b8bf0 0%, #3866d6 55%, #2a4fae 100%);
   --grad-blue-card: linear-gradient(150deg, #4d7fe6 0%, #2f5fc9 52%, #22458f 100%);
 
+  --red-tint: #2f1f1e;
   --red-ink: #f4867d;
   --amber-ink: #e0a44e;
   --green-ink: #62c795;

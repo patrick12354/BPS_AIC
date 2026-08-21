@@ -16,7 +16,14 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from ..schemas import Aspect, AspectAggregate, EvidenceCitation, QnAResponse
+from ..schemas import (
+    ActionCard,
+    Aspect,
+    AspectAggregate,
+    Category,
+    EvidenceCitation,
+    QnAResponse,
+)
 
 # Kata kunci untuk MENGARAHKAN pertanyaan ke aspek - bukan untuk melabeli ulasan. Pelabelan
 # ditangani model; daftar ini hanya menebak topik yang sedang ditanyakan pengguna.
@@ -64,10 +71,29 @@ GRAMMAR_WORDS = {
 # Kosakata untuk BERTANYA tentang analisis. Kata-kata ini jarang muncul di dalam ulasan itu
 # sendiri - pembeli menulis "paketnya telat", bukan "aspek pengiriman bersentimen negatif" -
 # sehingga tanpa daftar ini pertanyaan analitis yang wajar akan ikut tertolak.
+#
+# Tiga rumpun ditambahkan setelah audit, karena masing-masing menutup satu pertanyaan yang
+# sepenuhnya wajar tetapi tertolak penjaga domain:
+#
+#   aksi        "apa yang harus saya perbaiki duluan?" - pertanyaan pertama yang diajukan
+#               hampir setiap pemilik toko, dan satu-satunya isi kata yang tersisa setelah kata
+#               tata bahasa dibuang adalah "perbaiki" dan "duluan". Keduanya asing bagi korpus
+#               ulasan (pembeli tidak menulis "perbaiki"), sehingga rasio tak dikenalnya 1,0.
+#   pujian      "apa yang paling disukai pembeli?" - simetri dari "apa yang dikeluhkan", dan
+#               separuh nilai produk ada di sisi ini (bagian OPP-01).
+#   kuantitatif "berapa persen ulasan yang mengeluh?" - angkanya sudah dihitung, hanya tidak
+#               pernah sampai karena pertanyaannya berhenti di gerbang.
 ANALYSIS_WORDS = [
     "keluhan", "masalah", "aspek", "pembeli", "pelanggan", "ulasan", "review", "toko", "produk",
     "barang", "komplain", "positif", "negatif", "puas", "kecewa", "tren", "dikeluhkan",
     "pendapat", "penilaian", "rating", "bintang", "sentimen", "dipuji", "muncul",
+    # aksi
+    "perbaiki", "benahi", "atasi", "kerjakan", "dulu", "duluan", "prioritas", "utama",
+    "penting", "fokus", "langkah", "saran", "rekomendasi", "tindakan", "solusi", "mulai",
+    # pujian
+    "disukai", "suka", "kelebihan", "keunggulan", "unggul", "pujian", "memuji", "senang",
+    # kuantitatif
+    "persen", "persentase", "proporsi", "rasio", "jumlah", "total", "seberapa",
 ]
 
 _PREFIXES = ("meng", "meny", "mem", "men", "ber", "ter", "peng", "pem", "per", "di", "ke", "se",
@@ -117,13 +143,46 @@ def is_out_of_domain(question: str, corpus_vocabulary: set[str]) -> bool:
 
 @dataclass
 class QnAContext:
-    """Bahan menjawab untuk satu analisis. Disimpan di memori saja, tidak pernah ke disk."""
+    """Bahan tindak lanjut untuk satu analisis. Disimpan di memori saja, tidak pernah ke disk.
+
+    Namanya menyebut Q&A karena itulah pemakai pertamanya, dan tetap begitu supaya perubahan
+    ini tidak merembet ke seluruh pemanggilnya. Isinya sekarang lebih luas: apa pun yang
+    dibutuhkan permintaan LANJUTAN atas satu analisis - jawaban pertanyaan, jejak perhitungan,
+    draf balasan - hidup di objek yang sama.
+
+    Satu wadah, bukan tiga, dan itu bukan penghematan kode melainkan sifat privasi yang
+    diinginkan: seluruh sisa satu analisis kedaluwarsa pada satu waktu yang sama, lewat satu
+    kebijakan yang sama (bagian 37.1). Tiga cache dengan tiga TTL adalah tiga peluang untuk
+    salah satunya tertinggal lebih lama dari yang dijanjikan di layar pertama.
+    """
 
     index: object | None
     aggregates: list[AspectAggregate]
     total_reviews: int
     created_at: float = field(default_factory=time.time)
     vocabulary: set[str] = field(default_factory=set)
+    # Kartu aksi yang sudah tersusun untuk analisis ini. Dibawa ke sini supaya pertanyaan
+    # "apa yang harus saya perbaiki duluan?" dijawab oleh URUTAN YANG SAMA yang dibaca
+    # pengguna di laporan. Menjawabnya dengan aspek berkeluhan-terbanyak akan menghasilkan
+    # jawaban yang kadang berbeda dari kartu nomor satu di layar - skor prioritas bukan
+    # sekadar frekuensi - dan dua urutan berbeda dari satu sistem menghapus kepercayaan
+    # pada keduanya.
+    actions: list[ActionCard] = field(default_factory=list)
+    # Jumlah ULASAN yang memuat keluhan (bukan jumlah sebutan). Dipakai jawaban kuantitatif
+    # supaya persentasenya punya penyebut yang benar; lihat catatan di AnalysisSummary.
+    reviews_with_complaint: int | None = None
+    # Jejak perhitungan per action_id (fitur S2). Dibangun saat analisis, bukan saat diminta:
+    # `predictions` sudah dilepas ke sampah begitu request analisis selesai, dan menghidupkan
+    # ulangnya berarti menjalankan inferensi kedua atas data yang sudah tidak ada.
+    traces: dict[str, object] = field(default_factory=dict)
+    # Klausa negatif per (review_id, aspect) - bahan kalimat pengakuan pada draf balasan.
+    # Kuncinya tuple supaya satu ulasan yang mengeluhkan dua aspek tidak saling menimpa.
+    negative_clauses: dict[tuple[str, str], str] = field(default_factory=dict)
+    # Keterangan sesi yang dibutuhkan arsip (L5). Kategori dan rentang tanggal tidak ada
+    # di dalam agregat, padahal keduanya menentukan apakah dua arsip layak dibandingkan.
+    category: Category = Category.OTHER
+    period_start: object | None = None
+    period_end: object | None = None
 
     def __post_init__(self) -> None:
         # Kosakata diambil dari teks yang SUDAH diredaksi (index dibangun dari clean_text),
@@ -174,6 +233,190 @@ def _detect_aspect(question: str) -> Aspect | None:
     return best
 
 
+# --------------------------------------------------------------------------------------
+# Maksud pertanyaan
+# --------------------------------------------------------------------------------------
+# Sebelum ini hanya ada SATU bentuk jawaban: "berapa banyak yang mengeluh". Akibatnya
+# pertanyaan tentang pujian dijawab dengan daftar keluhan, dan pertanyaan tentang apa yang
+# harus dikerjakan lebih dulu dijawab dengan statistik yang tidak menyebut satu pun tindakan.
+# Bentuk jawabannya benar secara angka dan salah sebagai jawaban.
+#
+# Dicocokkan pada teks pertanyaan apa adanya, bukan pada stem: frasa seperti "lebih dulu"
+# terdiri dari dua kata yang masing-masing tidak berarti apa-apa. Pemenggal imbuhan di atas
+# hanya bertugas menjaga gerbang domain, bukan memahami pertanyaan.
+
+INTENT_PRIORITAS = "prioritas"
+INTENT_POSITIF = "positif"
+INTENT_KUANTITATIF = "kuantitatif"
+INTENT_UMUM = "umum"
+
+_POLA_PRIORITAS = (
+    "duluan", "lebih dulu", "paling dulu", "pertama kali", "langkah pertama", "mulai dari mana",
+    "prioritas", "diprioritaskan", "paling penting", "paling utama", "harus saya perbaiki",
+    "harus diperbaiki", "perlu diperbaiki", "harus saya kerjakan", "harus dikerjakan",
+    "saya benahi", "apa yang harus", "rekomendasi", "saran", "sebaiknya saya",
+)
+
+_POLA_POSITIF = (
+    "dipuji", "memuji", "pujian", "disukai", "disuka", "paling suka", "kelebihan",
+    "keunggulan", "paling bagus", "paling baik", "yang bagus", "yang positif", "hal positif",
+    "sisi positif", "paling puas", "senang",
+)
+
+# Pengingkaran yang membalik arti frasa pujian. Tanpa ini "apa yang tidak disukai pembeli?"
+# terbaca sebagai pertanyaan pujian dan dijawab dengan aspek yang paling banyak dipuji -
+# kebalikan persis dari yang ditanyakan, dan justru pada bentuk pertanyaan yang wajar.
+_POLA_INGKAR = (
+    "tidak dipuji", "tidak disukai", "tidak disuka", "tidak suka", "tidak puas", "kurang puas",
+    "kurang suka", "tidak bagus", "tidak baik", "tidak senang", "belum puas",
+)
+
+_POLA_KUANTITATIF = (
+    "berapa persen", "berapa %", "persentase", "berapa banyak", "berapa jumlah", "ada berapa",
+    "berapa ulasan", "seberapa banyak", "proporsi", "rasio", "berapa yang",
+)
+
+
+def _detect_intent(question: str) -> str:
+    """Tentukan BENTUK jawaban yang diminta, bukan topiknya.
+
+    Urutannya bermakna dan tidak boleh diacak. Pertanyaan prioritas menang lebih dulu karena
+    ia meminta satu tindakan, bukan satu angka - "berapa yang harus saya perbaiki duluan"
+    tetap dijawab dengan kartu prioritas, bukan dengan hitungan. Pujian mendahului kuantitatif
+    dengan alasan yang sama terbalik: "berapa persen yang memuji pengiriman" memang meminta
+    angka, dan jawaban pujian di bawah memang membawa angkanya sendiri.
+    """
+    lowered = question.lower()
+    if any(p in lowered for p in _POLA_PRIORITAS):
+        return INTENT_PRIORITAS
+    if any(p in lowered for p in _POLA_POSITIF) and not any(p in lowered for p in _POLA_INGKAR):
+        return INTENT_POSITIF
+    if any(p in lowered for p in _POLA_KUANTITATIF):
+        return INTENT_KUANTITATIF
+    return INTENT_UMUM
+
+
+def _priority_sentence(
+    actions: list[ActionCard], aggregates: list[AspectAggregate], total: int
+) -> str:
+    """Jawaban untuk "apa yang harus saya perbaiki duluan?".
+
+    Diambil dari kartu aksi teratas, bukan dihitung ulang di sini - satu urutan prioritas
+    untuk seluruh produk (ADR-011).
+    """
+    if actions:
+        top = actions[0]
+        kalimat = (
+            f"Yang perlu dikerjakan lebih dulu: {top.title}. {top.one_line_summary}. "
+            f"Skor prioritasnya {top.priority_score} dengan urgensi {top.urgency.value}, "
+            f"tertinggi di antara {len(actions)} rekomendasi yang tersusun. "
+            f"Dasarnya: {top.priority_reasoning}"
+        )
+        if len(actions) > 1:
+            berikut = ", lalu ".join(a.title.lower() for a in actions[1:3])
+            kalimat += f" Sesudah itu: {berikut}."
+        return kalimat
+
+    # Tidak ada kartu aksi berarti tidak ada keluhan yang cukup untuk diprioritaskan. Itu
+    # jawaban yang sah dan harus diucapkan, bukan diisi dengan aspek sembarang.
+    berkeluhan = [a for a in aggregates if a.negative_count]
+    if not berkeluhan:
+        return (
+            f"Dari {total} ulasan, tidak ada aspek yang cukup sering dikeluhkan untuk "
+            f"dijadikan prioritas perbaikan."
+        )
+    top = max(berkeluhan, key=lambda a: a.negative_count)
+    return (
+        f"Rekomendasi berperingkat belum tersusun untuk analisis ini, tetapi keluhan "
+        f"terbanyak ada pada {top.aspect.value.replace('_', ' ')} - {top.negative_count} "
+        f"dari {total} ulasan."
+    )
+
+
+def _positive_sentence(
+    aggregates: list[AspectAggregate], total: int, aspect: Aspect | None = None
+) -> str:
+    """Jawaban untuk pertanyaan tentang apa yang DIPUJI - bukan cerminan dari sisi keluhan."""
+    by_aspect = {a.aspect: a for a in aggregates}
+    if aspect is not None and aspect in by_aspect:
+        agg = by_aspect[aspect]
+        name = agg.aspect.value.replace("_", " ")
+        if agg.positive_count == 0:
+            return (
+                f"Dari {total} ulasan, {agg.total_mentions} membahas {name} dan tidak satu pun "
+                f"menyebutnya secara positif."
+            )
+        pct = agg.positive_count / agg.total_mentions
+        return (
+            f"Dari {total} ulasan, {agg.positive_count} memuji {name} - {pct:.0%} dari "
+            f"{agg.total_mentions} yang membahasnya."
+        )
+
+    dipuji = [a for a in aggregates if a.positive_count]
+    if not dipuji:
+        return f"Dari {total} ulasan, belum ada aspek yang disebut secara positif."
+    urut = sorted(dipuji, key=lambda a: a.positive_count, reverse=True)
+    top = urut[0]
+    pct = top.positive_count / top.total_mentions
+    kalimat = (
+        f"Dari {total} ulasan, yang paling sering dipuji adalah "
+        f"{top.aspect.value.replace('_', ' ')} - {top.positive_count} sebutan positif, "
+        f"{pct:.0%} dari {top.total_mentions} yang membahasnya."
+    )
+    if len(urut) > 1:
+        lain = ", ".join(
+            f"{a.aspect.value.replace('_', ' ')} ({a.positive_count})" for a in urut[1:3]
+        )
+        kalimat += f" Menyusul: {lain}."
+    return kalimat
+
+
+def _quantitative_sentence(
+    aggregates: list[AspectAggregate],
+    total: int,
+    aspect: Aspect | None = None,
+    reviews_with_complaint: int | None = None,
+) -> str:
+    """Jawaban untuk pertanyaan berapa dan berapa persen.
+
+    Penyebutnya disebut eksplisit di setiap kalimat. Persentase tanpa penyebut adalah cara
+    paling mudah menyesatkan pembaca sendiri: "30% mengeluh" berarti dua hal yang sangat
+    berbeda kalau dihitung dari seluruh ulasan atau dari yang membahas aspek itu saja.
+    """
+    by_aspect = {a.aspect: a for a in aggregates}
+    if aspect is not None and aspect in by_aspect:
+        agg = by_aspect[aspect]
+        name = agg.aspect.value.replace("_", " ")
+        share = agg.total_mentions / total if total else 0.0
+        pct_neg = agg.negative_count / agg.total_mentions if agg.total_mentions else 0.0
+        return (
+            f"{agg.total_mentions} dari {total} ulasan ({share:.0%}) membahas {name}. "
+            f"Di antaranya {agg.negative_count} berisi keluhan ({pct_neg:.0%} dari yang "
+            f"membahas, {agg.negative_count / total if total else 0:.0%} dari seluruh ulasan) "
+            f"dan {agg.positive_count} positif."
+        )
+
+    berkeluhan = [a for a in aggregates if a.negative_count]
+    if reviews_with_complaint is not None and total:
+        pct = reviews_with_complaint / total
+        kalimat = (
+            f"{reviews_with_complaint} dari {total} ulasan ({pct:.0%}) memuat setidaknya satu "
+            f"keluhan, tersebar di {len(berkeluhan)} aspek."
+        )
+    else:
+        kalimat = (
+            f"Dari {total} ulasan, {len(berkeluhan)} aspek memuat keluhan."
+        )
+    if berkeluhan:
+        top = max(berkeluhan, key=lambda a: a.negative_count)
+        pct_top = top.negative_count / total if total else 0.0
+        kalimat += (
+            f" Yang terbanyak {top.aspect.value.replace('_', ' ')}: {top.negative_count} "
+            f"ulasan ({pct_top:.0%} dari seluruhnya)."
+        )
+    return kalimat
+
+
 def _aspect_sentence(aggregate: AspectAggregate, total: int) -> str:
     name = aggregate.aspect.value.replace("_", " ")
     pct_neg = aggregate.negative_count / aggregate.total_mentions if aggregate.total_mentions else 0
@@ -222,9 +465,28 @@ def answer_question(context: QnAContext, question: str) -> QnAResponse:
         )
 
     aspect = _detect_aspect(question)
-    citations: list[EvidenceCitation] = context.index.retrieve(
-        query=question, aspect=aspect, top_k=MAX_CITATIONS
-    )
+    intent = _detect_intent(question)
+
+    # Kutipan mengikuti BENTUK jawabannya, bukan sekadar topiknya.
+    #
+    # Pertanyaan prioritas dijawab oleh kartu aksi teratas, jadi buktinya adalah bukti kartu
+    # itu - sudah tersaring hanya berisi keluhan, dan sudah dibaca pengguna di laporan. Dua
+    # kumpulan kutipan berbeda untuk satu klaim yang sama membuat keduanya terlihat sembarang.
+    #
+    # Pertanyaan pujian meminta kutipan pujian. Tanpa `positive_only`, pertanyaan "apa yang
+    # paling disukai pembeli" dijawab kalimat pujian yang dibuktikan oleh tiga keluhan - dan
+    # bukti yang membantah klaimnya sendiri lebih merusak daripada tidak ada bukti.
+    citations: list[EvidenceCitation] = []
+    if intent == INTENT_PRIORITAS and context.actions:
+        citations = list(context.actions[0].evidence_quotes[:MAX_CITATIONS])
+        aspect = context.actions[0].aspect
+    if not citations:
+        citations = context.index.retrieve(
+            query=question,
+            aspect=aspect,
+            top_k=MAX_CITATIONS,
+            positive_only=intent == INTENT_POSITIF,
+        )
 
     # Tanpa kutipan, tidak ada yang dapat diperiksa pengguna - dan jawaban yang tidak dapat
     # diperiksa adalah persis yang produk ini hindari.
@@ -239,7 +501,15 @@ def answer_question(context: QnAContext, question: str) -> QnAResponse:
         )
 
     by_aspect = {a.aspect: a for a in context.aggregates}
-    if aspect is not None and aspect in by_aspect:
+    if intent == INTENT_PRIORITAS:
+        answer = _priority_sentence(context.actions, context.aggregates, context.total_reviews)
+    elif intent == INTENT_POSITIF:
+        answer = _positive_sentence(context.aggregates, context.total_reviews, aspect)
+    elif intent == INTENT_KUANTITATIF:
+        answer = _quantitative_sentence(
+            context.aggregates, context.total_reviews, aspect, context.reviews_with_complaint
+        )
+    elif aspect is not None and aspect in by_aspect:
         answer = _aspect_sentence(by_aspect[aspect], context.total_reviews)
     else:
         answer = _overall_sentence(context.aggregates, context.total_reviews)

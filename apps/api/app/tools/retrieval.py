@@ -48,6 +48,12 @@ class IndexedReview:
     # Action Card keluhan harus berupa keluhan - kutipan pujian pada kartu keluhan justru
     # merusak kepercayaan yang ingin dibangun bukti itu.
     negative_aspects: frozenset[str] = frozenset()
+    # Cerminan dari `negative_aspects`, dan ada karena alasan yang sama dibalik: pertanyaan
+    # "apa yang paling disukai pembeli" dijawab kalimat pujian, dan kalimat itu wajib
+    # dibuktikan kutipan pujian. Sebelum ini kartu peluang dan jawaban pujian sama-sama
+    # mengambil kutipan tanpa penyaringan sentimen, sehingga keduanya kerap tampil dengan
+    # keluhan sebagai buktinya.
+    positive_aspects: frozenset[str] = frozenset()
     product_id: str | None = None
     rating: int | None = None
     timestamp: object | None = None
@@ -95,6 +101,7 @@ class EvidenceIndex:
                 vector=v,
                 aspects=frozenset(r.get("aspects", [])),
                 negative_aspects=frozenset(r.get("negative_aspects", [])),
+                positive_aspects=frozenset(r.get("positive_aspects", [])),
                 product_id=r.get("product_id"),
                 rating=r.get("rating"),
                 timestamp=r.get("timestamp"),
@@ -102,10 +109,28 @@ class EvidenceIndex:
             for r, v in zip(reviews, vectors)
         ]
 
-    def _candidates(self, aspect: Aspect | None, negative_only: bool) -> list[IndexedReview]:
+    def _candidates(
+        self, aspect: Aspect | None, negative_only: bool, positive_only: bool = False
+    ) -> list[IndexedReview]:
         """Filter metadata SEBELUM ranking similarity (bagian 21.1) - mengurangi derau."""
         if aspect is None:
+            # Penyaringan sentimen tetap berlaku tanpa aspek. Pertanyaan "apa yang paling
+            # disukai pembeli" tidak menyebut aspek mana pun, dan justru pertanyaan itulah
+            # yang paling mudah dijawab dengan kutipan keluhan kalau penyaringnya dilewati.
+            if positive_only:
+                positive = [i for i in self.items if i.positive_aspects]
+                if positive:
+                    return positive
+            if negative_only:
+                negative = [i for i in self.items if i.negative_aspects]
+                if negative:
+                    return negative
             return self.items
+
+        if positive_only:
+            positive = [i for i in self.items if aspect.value in i.positive_aspects]
+            if positive:
+                return positive
 
         if negative_only:
             # Bukti untuk kartu keluhan HARUS keluhan. Diukur pada dataset demo, tanpa filter
@@ -122,13 +147,15 @@ class EvidenceIndex:
 
     def retrieve(
         self, query: str, aspect: Aspect | None = None, top_k: int = 5,
-        negative_only: bool = False,
+        negative_only: bool = False, positive_only: bool = False,
     ) -> list[EvidenceCitation]:
         """Ambil kutipan paling relevan. Daftar KOSONG berarti data belum cukup.
 
-        `negative_only` dipakai saat bukti diminta untuk Action Card keluhan.
+        `negative_only` dipakai saat bukti diminta untuk Action Card keluhan, `positive_only`
+        untuk kartu peluang dan jawaban tentang apa yang dipuji. Keduanya tidak pernah aktif
+        bersamaan; bila terjadi, pujian menang karena ia pemanggil yang lebih spesifik.
         """
-        candidates = self._candidates(aspect, negative_only)
+        candidates = self._candidates(aspect, negative_only, positive_only)
         if not candidates:
             return []
 
@@ -177,7 +204,10 @@ class EvidenceIndex:
 
 def retrieve_evidence(
     index: EvidenceIndex, query: str, aspect: Aspect | None = None, top_k: int = 5,
-    negative_only: bool = False,
+    negative_only: bool = False, positive_only: bool = False,
 ) -> list[EvidenceCitation]:
     """Bentuk fungsi sesuai tool contract bagian 27.3."""
-    return index.retrieve(query=query, aspect=aspect, top_k=top_k, negative_only=negative_only)
+    return index.retrieve(
+        query=query, aspect=aspect, top_k=top_k,
+        negative_only=negative_only, positive_only=positive_only,
+    )

@@ -174,7 +174,15 @@ class AspectAggregate(_Base):
 
 
 class BenchmarkRecord(_Base):
-    """Bagian 25.8 - keluaran compare_category_baseline()."""
+    """Bagian 25.8 - keluaran compare_category_baseline().
+
+    Empat medan terakhir menyangkut SISI TOKO, dan ketiadaannya adalah temuan audit yang
+    nyata: sebelum ini seluruh penilaian keyakinan hanya melihat besar sampel baseline. Toko
+    dengan lima ulasan yang dibandingkan terhadap baseline 40.000 ulasan karenanya tampil
+    dengan label "keyakinan tinggi" - padahal margin kesalahan sisi tokonya sendiri sekitar
+    +-40 poin persentase, jauh lebih besar dari selisih yang sedang ditampilkan sebagai temuan.
+    Keyakinan sebuah perbandingan ditentukan oleh sisi yang paling lemah, bukan yang terkuat.
+    """
 
     category: Category
     aspect: Aspect
@@ -184,6 +192,12 @@ class BenchmarkRecord(_Base):
     confidence_level: ConfidenceLevel
     gap: float
     margin_of_error: float = Field(default=0.0, ge=0.0)
+    # Penyebut store_pct - jumlah ulasan sesi ini, bukan jumlah sebutan aspeknya.
+    store_sample_size: int = Field(default=0, ge=0)
+    store_margin_of_error: float = Field(default=0.0, ge=0.0)
+    # True berarti selisihnya TIDAK boleh ditampilkan sebagai temuan. Angka store_pct tetap
+    # diberikan apa adanya; yang ditahan hanya klaim perbandingannya.
+    preliminary: bool = False
 
 
 class EvidenceCitation(_Base):
@@ -201,6 +215,64 @@ class EvidenceCitation(_Base):
     aspect: Aspect | None = None
     rating: int | None = Field(default=None, ge=1, le=5)
     timestamp: datetime | None = None
+
+
+# --------------------------------------------------------------------------------------
+# Jejak perhitungan - "Mode Juri"
+# --------------------------------------------------------------------------------------
+# Seluruh isi di bawah SUDAH ada di dalam sistem sebelum ini; yang belum ada adalah jalan
+# keluarnya. Prediksi per klausa hidup di `TextPrediction`, komponen skor di
+# `PriorityResult.factors`, kutipan di kartu - masing-masing di tempatnya sendiri, tidak satu
+# pun dapat ditelusuri dari kartu yang dibaca pengguna.
+#
+# Bentuk ini merangkai ketiganya menjadi satu rantai untuk SATU kartu: klausa mana yang
+# terbaca, apa prediksinya, bagaimana ia menjadi agregat, dan bagaimana agregat itu menjadi
+# angka prioritas. Klaim "angka kami tidak dikarang" berhenti menjadi klaim ketika rantainya
+# dapat dibuka sendiri oleh pembaca yang skeptis.
+
+
+class TraceClause(_Base):
+    """Satu klausa beserta prediksinya - unit terkecil yang dapat diperiksa manusia."""
+
+    review_id: str
+    clause: str
+    aspect: Aspect
+    sentiment: Sentiment
+    severity: Severity
+
+
+class TraceFactor(_Base):
+    """Satu komponen rumus prioritas, beserta arti angkanya dalam bahasa manusia.
+
+    `explanation` ada karena angka telanjang tidak dapat diperiksa: "0,1500" tidak memberi
+    tahu siapa pun bahwa ia berasal dari 6 keluhan dibagi 40 ulasan.
+    """
+
+    key: str
+    label: str
+    value: float
+    explanation: str
+    role: str  # "pengali inti" | "modifier"
+
+
+class ActionTrace(_Base):
+    """Rantai penuh dari klausa mentah sampai skor satu Action Card."""
+
+    action_id: str
+    aspect: Aspect
+    # Klausa yang benar-benar dipakai, dibatasi jumlahnya. `clauses_total` menyebut berapa
+    # yang sebenarnya ada, supaya pemotongan ini tidak terbaca sebagai "cuma segini datanya".
+    clauses: list[TraceClause] = Field(default_factory=list)
+    clauses_total: int = Field(ge=0)
+    negative_clauses_total: int = Field(default=0, ge=0)
+    aggregate: AspectAggregate
+    formula: str
+    factors: list[TraceFactor] = Field(default_factory=list)
+    core: float
+    modifier: float
+    score: float = Field(ge=0.0, le=100.0)
+    citations: list[EvidenceCitation] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------------------
@@ -235,6 +307,9 @@ class ActionCard(_Base):
     risk_if_not_done: str
     risk_if_recommendation_wrong: str
     user_action: UserAction | None = None
+    # Diisi HANYA saat diminta (`POST /analyze?trace=1`). Payload biasa tetap ramping;
+    # rantai perhitungan boleh mahal karena yang memintanya sedang memeriksa, bukan bekerja.
+    trace: ActionTrace | None = None
 
     @field_validator("frequency_total")
     @classmethod
@@ -452,6 +527,9 @@ class AnalysisResult(_Base):
     top_actions: list[ActionCard] = Field(default_factory=list)
     aspect_aggregates: list[AspectAggregate] = Field(default_factory=list)
     visual_findings: list[VisualPrediction] = Field(default_factory=list)
+    # L4 - ulasan yang teks dan fotonya berlawanan arah. Kosong selama jalur visual belum
+    # lolos gerbangnya; itu keadaan yang benar, bukan kekurangan yang disembunyikan.
+    contradictions: list[ContradictionFinding] = Field(default_factory=list)
     benchmark: list[BenchmarkRecord] = Field(default_factory=list)
     opportunities: list[Opportunity] = Field(default_factory=list)
     data_quality: DataQuality | None = None
@@ -470,6 +548,14 @@ class AnalysisResult(_Base):
     warnings: list[str] = Field(default_factory=list)
     mode: AnalysisMode
     model_versions: dict[str, str] = Field(default_factory=dict)
+    # Apakah angka `confidence` di dalam hasil ini berasal dari model yang sudah dikalibrasi
+    # (temperature scaling, ml/text/calibrate.py). Frontend memakainya untuk memutuskan boleh
+    # atau tidaknya angka keyakinan tampil di layar.
+    #
+    # Dikirim sebagai medan, bukan diputuskan di sisi klien dari nama versi model: aturan
+    # "tampilkan bila terkalibrasi" harus punya satu tempat, dan tempat itu adalah sisi yang
+    # benar-benar tahu isi checkpoint-nya.
+    confidence_calibrated: bool = False
 
     @model_validator(mode="after")
     def _actions_sorted_by_priority(self) -> AnalysisResult:
@@ -524,6 +610,155 @@ class OcrResponse(_Base):
     images: list[str]
     reviews: list[OcrDraftReview]
     notes: list[str] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------
+# Kontradiksi teks vs foto (L4)
+# --------------------------------------------------------------------------------------
+class ContradictionFinding(_Base):
+    """Satu ulasan yang teks dan fotonya menunjuk arah berlawanan.
+
+    Ini sinyal paling berharga yang tidak terlihat mata di dashboard mana pun: ulasan bintang
+    lima bertuliskan "barangnya bagus!" dengan foto barang penyok. Analitik ulasan yang ada di
+    pasar seluruhnya buta foto, jadi ulasan seperti itu terhitung sebagai kepuasan - dan
+    masalah nyatanya tidak pernah muncul di angka mana pun.
+
+    Bentuknya sengaja menaruh KEDUA bukti berdampingan dan tidak memutuskan siapa yang benar.
+    Sistem tidak tahu apakah pembelinya sungkan menulis keluhan, salah unggah foto, atau
+    memfoto barang lain. Yang diketahuinya cuma bahwa keduanya tidak cocok, dan itu saja sudah
+    cukup untuk meminta satu menit perhatian manusia (bagian 20.3).
+    """
+
+    review_id: str
+    quote: str  # teks ulasan yang sudah diredaksi, apa adanya
+    rating: int | None = Field(default=None, ge=1, le=5)
+    text_says_problem: bool
+    visual: VisualPrediction
+    display_note: str
+    combined_confidence: float = Field(ge=0.0, le=1.0)
+
+
+# --------------------------------------------------------------------------------------
+# Arsip analisis dan perbandingan antar-periode
+# --------------------------------------------------------------------------------------
+# Roadmap produk memuat satu baris yang selama ini tidak dapat dipenuhi: "riwayat antar-sesi".
+# Memenuhinya dengan cara biasa - menyimpan hasil di server - melanggar batasan MVP sekaligus
+# membatalkan janji privasi di layar pertama.
+#
+# Arsip menyelesaikannya dengan membalik siapa yang menyimpan. Pengguna mengunduh sekeping JSON
+# berisi AGREGAT SAJA, lalu mengunggahnya kembali di sesi berikutnya sebagai pembanding. Server
+# tidak menyimpan apa pun, sesi tetap sekali-pakai, dan kalimat "arsipnya milik Anda, kami tidak
+# menyimpannya" menjadi lebih kuat daripada sekadar tidak punya fitur riwayat.
+#
+# Yang TIDAK boleh ada di dalamnya: teks ulasan, kutipan, id ulasan, nama produk. Berkas ini
+# akan berpindah lewat WhatsApp dan email, dan pemiliknya tidak akan membacanya sebelum
+# meneruskan. Isinya karenanya harus aman dibaca siapa pun yang kebetulan menerimanya.
+
+
+class ArchiveAspect(_Base):
+    """Satu aspek di dalam arsip - angka saja, tanpa satu pun kata dari ulasan."""
+
+    aspect: Aspect
+    total_mentions: int = Field(ge=0)
+    negative_count: int = Field(ge=0)
+    positive_count: int = Field(ge=0)
+    pct_negative_of_reviews: float = Field(ge=0.0, le=1.0)
+
+
+class AnalysisArchive(_Base):
+    """Ringkasan satu analisis yang aman dibawa keluar sesi.
+
+    `schema_version` ada supaya arsip lama tetap dapat dibaca - atau ditolak dengan pesan yang
+    jelas - ketika bentuknya berubah. Arsip berumur panjang di luar kendali kami; satu-satunya
+    yang dapat kami lakukan adalah memberinya nomor sekarang, sebelum ada yang beredar.
+    """
+
+    schema_version: str = "ulasin-archive-1"
+    analysis_id: str
+    total_reviews: int = Field(ge=0)
+    reviews_with_complaint: int = Field(ge=0)
+    category: Category
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    aspects: list[ArchiveAspect] = Field(default_factory=list)
+    model_versions: dict[str, str] = Field(default_factory=dict)
+    confidence_calibrated: bool = False
+    note: str = (
+        "Arsip ini hanya memuat angka agregat. Tidak ada teks ulasan, kutipan, maupun "
+        "identitas pembeli di dalamnya."
+    )
+
+
+class AspectDelta(_Base):
+    """Perubahan satu aspek antara dua analisis.
+
+    `significant` adalah medan terpenting di sini, dan alasannya sama dengan yang membuat kolom
+    selisih benchmark disembunyikan pada data tipis: dua proporsi yang masing-masing punya
+    margin kesalahan menghasilkan SELISIH yang marginnya lebih lebar lagi. "Turun dari 19% ke
+    8%" pada dua batch tiga puluhan ulasan bisa sepenuhnya berupa derau - dan pemilik toko yang
+    membacanya akan menyimpulkan pergantian kurirnya berhasil.
+    """
+
+    aspect: Aspect
+    before_count: int = Field(ge=0)
+    after_count: int = Field(ge=0)
+    before_pct: float = Field(ge=0.0, le=1.0)
+    after_pct: float = Field(ge=0.0, le=1.0)
+    delta_pct: float
+    margin_of_error: float = Field(ge=0.0)
+    significant: bool
+    direction: str  # "membaik" | "memburuk" | "tetap"
+
+
+class ArchiveComparison(_Base):
+    """Hasil membandingkan arsip lama dengan analisis yang sedang dibuka."""
+
+    previous_total: int = Field(ge=0)
+    current_total: int = Field(ge=0)
+    previous_period_end: datetime | None = None
+    current_period_start: datetime | None = None
+    deltas: list[AspectDelta] = Field(default_factory=list)
+    headline: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------
+# Draf balasan penjual
+# --------------------------------------------------------------------------------------
+class ReplyDraft(_Base):
+    """Satu draf balasan untuk satu ulasan negatif.
+
+    Namanya menyebut DRAF, dan itu bukan kerendahan hati basa-basi. Balasan penjual di
+    marketplace terbit atas nama toko, dibaca calon pembeli lain, dan tidak dapat ditarik.
+    Sistem tidak pernah tahu apakah barangnya memang rusak, apakah tokonya sanggup mengganti,
+    atau apa yang sudah dijanjikan lewat chat - jadi ia menyiapkan kalimatnya dan berhenti di
+    situ.
+
+    `decision_slots` menyebut kalimat mana di dalam draf yang MENUNTUT keputusan bisnis
+    (ganti barang, refund, kompensasi). Slot itu sengaja ditulis sebagai tanda kurung yang
+    mengganggu, bukan diisi dengan janji aman: draf yang tinggal disalin akan disalin, dan
+    janji yang tidak disadari penjual adalah kerugian yang produk ini timbulkan sendiri.
+    """
+
+    review_id: str
+    quote: str
+    rating: int | None = Field(default=None, ge=1, le=5)
+    aspect: Aspect
+    severity: Severity
+    draft: str
+    decision_slots: list[str] = Field(default_factory=list)
+    # Id template + varian. Dua analisis atas data yang sama menghasilkan draf yang sama,
+    # dan id ini yang membuat klaim itu dapat diperiksa alih-alih dipercaya.
+    template_id: str
+
+
+class ReplyDraftResponse(_Base):
+    """Keluaran POST /api/v1/reply-drafts - seluruh draf untuk satu Action Card."""
+
+    action_id: str
+    aspect: Aspect
+    drafts: list[ReplyDraft] = Field(default_factory=list)
+    note: str
 
 
 class ErrorResponse(_Base):

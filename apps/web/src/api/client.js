@@ -62,6 +62,46 @@ export const api = {
       { method: "POST", body: JSON.stringify({ analysis_id: analysisId, question }) },
       TIMEOUT_ANALISIS_MS
     ),
+  /** S1 - draf balasan penjual untuk ulasan pendukung satu kartu aksi.
+   *
+   * Batas waktu biasa, bukan batas analisis: penyusunannya template murni atas data yang
+   * sudah ada di memori server, terukur dalam milidetik. Kalau ia menggantung satu menit,
+   * yang terjadi bukan "sedang lama" melainkan benar-benar bermasalah. */
+  replyDrafts: (analysisId, actionId) =>
+    request("/api/v1/reply-drafts", {
+      method: "POST",
+      body: JSON.stringify({ analysis_id: analysisId, action_id: actionId }),
+    }),
+  /** L5 - ringkasan agregat yang aman dibawa keluar sesi.
+   *
+   * Diminta ke server, bukan disusun dari `result` yang sudah ada di tangan klien. Bedanya
+   * penting: pengguna dapat mengganti kategori pembanding di layar hasil, sehingga `result`
+   * di sini boleh berbeda dari analisis yang benar-benar dijalankan. Arsip harus menggambarkan
+   * yang dijalankan. */
+  archive: (analysisId) =>
+    request("/api/v1/archive", {
+      method: "POST",
+      body: JSON.stringify({ analysis_id: analysisId }),
+    }),
+  /** L5 - selisih antar-periode terhadap arsip milik pengguna sendiri.
+   *
+   * Arsipnya ikut dikirim di badan permintaan. Server tidak punya tempat mengambilnya, dan
+   * tidak akan pernah punya - itulah cara baris "riwayat antar-sesi" dipenuhi tanpa database. */
+  compare: (analysisId, previous) =>
+    request("/api/v1/compare", {
+      method: "POST",
+      body: JSON.stringify({ analysis_id: analysisId, previous }),
+    }),
+  /** S2 - rantai perhitungan satu kartu aksi.
+   *
+   * Diambil terpisah, bukan diangkut bersama hasil analisis: satu jejak memuat belasan klausa
+   * beserta prediksinya, dan sebagian besar pengguna tidak pernah membukanya. Laporan yang
+   * tidak dibuka jejaknya karenanya tidak membayar ongkos payload-nya. */
+  trace: (analysisId, actionId) =>
+    request("/api/v1/trace", {
+      method: "POST",
+      body: JSON.stringify({ analysis_id: analysisId, action_id: actionId }),
+    }),
   /** ING-10 - baca teks ulasan dari tangkapan layar. Batas waktunya mengikuti analisis
    *  karena OCR pada CPU untuk beberapa gambar sekaligus juga dapat berjalan lama. */
   readScreenshots: (files) => {

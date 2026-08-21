@@ -538,3 +538,19 @@
 .reveal {
   animation: card-rise var(--motion-reveal) var(--ease-emphasis) both;
 }
+
+/* Banner temuan - dipakai kalimat kepala perbandingan antar-periode saat ada perubahan yang
+ * benar-benar dapat dibedakan dari kebetulan. Dibedakan dari `.banner-grey` karena keduanya
+ * muncul berdampingan di panel yang sama, dan yang satu adalah temuan sementara yang lain
+ * catatan kaki. */
+.banner-blue {
+  background: var(--blue-tint);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  padding: 15px 18px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: var(--blue-dark);
+  margin-bottom: var(--space-4);
+}

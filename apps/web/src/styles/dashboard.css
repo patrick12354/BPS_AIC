@@ -541,11 +541,26 @@
   align-items: center;
   gap: 8px;
 }
-.draft__rating {
+/* Pemilih bintang draf. Sekarang kendali, bukan label - ratingnya kerap tidak terbaca OCR
+ * (bintangnya ikon, bukan teks) dan hanya orang yang menatap tangkapan layarnya yang tahu
+ * jawabannya. Tingginya disamakan dengan lencana keyakinan di sebelahnya supaya barisnya
+ * tidak bergelombang. */
+.draft__bintang select {
+  font-family: inherit;
   font-size: 11px;
   font-weight: 700;
   color: var(--blue-dark);
   font-variant-numeric: tabular-nums;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px 8px;
+  min-height: 26px;
+  cursor: pointer;
+  transition: border-color var(--motion-state) var(--ease-out);
+}
+.draft__bintang select:hover {
+  border-color: var(--blue);
 }
 /* Keyakinan OCR ditulis sebagai kata, bukan angka: "0,62" tidak berarti apa-apa bagi pemilik
  * toko, sedangkan "perlu diperiksa" langsung menyebut apa yang harus ia lakukan. */
@@ -1304,4 +1319,208 @@
   .bubble {
     max-width: 95%;
   }
+}
+
+/* ================================================================================
+ * ALAT KARTU AKSI - draf balasan (S1) dan jejak perhitungan (S2)
+ * ============================================================================= */
+
+/* Tiga pintu ke lembar bukti. Dibungkus supaya ketiganya membungkus baris dengan rapi di
+ * layar sempit alih-alih menempel jadi satu kalimat panjang yang tak terbaca sebagai tombol. */
+.acard__pintu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+/* Kutipan di dalam draf balasan lebih rapat: di sini ia keterangan, bukan bukti. Yang dibaca
+ * pengguna pada panel ini adalah balasan yang sedang ia sunting; ulasan aslinya cuma perlu
+ * ada di dekatnya supaya tidak perlu diingat. */
+.equote--rapat {
+  margin-top: 8px;
+  padding: 10px 13px;
+}
+.equote--rapat p {
+  font-size: 11.5px;
+}
+
+/* Peringatan slot keputusan. Berona, bukan abu-abu seperti `.meta` lain: kalimat inilah yang
+ * paling mahal bila terlewat - draf yang tersalin bersama "[keputusan Anda: refund]" akan
+ * terkirim apa adanya ke halaman produk yang dibaca calon pembeli lain. */
+.draft__slot {
+  margin-top: 8px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--red-tint);
+  color: var(--red-ink);
+}
+
+/* --- jejak perhitungan ------------------------------------------------------- */
+
+.jejak {
+  margin-top: 4px;
+}
+.jejak__langkah {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.jejak__langkah > li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.jejak__langkah > li:last-child {
+  border-bottom: none;
+}
+.jejak__langkah h5 {
+  font-size: var(--text-std);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* Klausa ditulis dengan huruf mesin ketik, sama seperti kutipan bukti. Penyeragaman itu
+ * membawa arti: huruf mesin ketik di produk ini selalu berarti "ini teks pengguna apa adanya,
+ * bukan kalimat yang kami susun". */
+.jejak__klausa {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.jejak__klausa li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 9px;
+  align-items: baseline;
+  padding: 8px 11px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+:root[data-theme="dark"] .jejak__klausa li {
+  background: rgba(255, 255, 255, 0.045);
+}
+.jejak__klausa .meta {
+  grid-column: 2;
+  font-size: 10.5px;
+}
+.jejak__teks {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* Sentimen ditandai kata, bukan warna saja - aturan yang sama berlaku di seluruh produk. */
+.jejak__tanda {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+  background: var(--grey-surface);
+  color: var(--ink-soft);
+}
+.jejak__tanda--negatif {
+  background: var(--red-tint);
+  color: var(--red-ink);
+}
+.jejak__tanda--positif {
+  background: var(--blue-tint);
+  color: var(--blue-dark);
+}
+
+.jejak__rumus {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 9px 12px;
+  margin: 8px 0;
+  border-radius: var(--r);
+  background: var(--grey-surface);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.jejak__tabel td {
+  vertical-align: top;
+}
+.jejak__peran {
+  display: block;
+  font-size: 10px;
+  font-style: normal;
+  color: var(--muted);
+}
+.jejak__kutipan {
+  margin-top: 14px;
+}
+.jejak__kutipan h5 {
+  font-size: var(--text-std);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* Dua tombol ekspor berdampingan, membungkus baris di layar sempit alih-alih menyusut sampai
+ * labelnya terpotong. */
+.arsip__aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arsip__aksi .btn {
+  flex: 1 1 auto;
+  min-width: 14rem;
+}
+
+/* ================================================================================
+ * L4 - KARTU KONTRADIKSI FOTO vs TEKS
+ * ============================================================================= */
+
+/* Dua sisi bersebelahan di layar lebar, bertumpuk di layar sempit. Berdampingan bukan pilihan
+ * gaya: seluruh gunanya kartu ini adalah membuat pembacanya MEMBANDINGKAN dua bukti, dan dua
+ * hal yang harus dibandingkan tidak boleh menuntut penggulir di antaranya. */
+.kontra__pasangan {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (min-width: 46rem) {
+  .kontra__pasangan {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+.kontra__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.kontra__visual {
+  margin-top: 11px;
+  padding: 13px 16px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 0 4px 10px rgba(20, 21, 15, 0.05);
+}
+:root[data-theme="dark"] .kontra__visual {
+  background: rgba(255, 255, 255, 0.045);
+}
+.kontra__visual b {
+  display: block;
+  font-size: var(--text-std);
+  margin-bottom: 4px;
+}
+.kontra__visual .meta {
+  display: block;
+  font-size: 10.5px;
 }

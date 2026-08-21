@@ -30,6 +30,15 @@ DEFAULT_BASELINE_PATH = (
 # disembunyikan; ia ditampilkan dengan keyakinan rendah supaya pengguna menilai sendiri.
 CONFIDENCE_THRESHOLDS = {"tinggi": 500, "sedang": 100}
 
+# Ambang sisi TOKO. Di bawah angka ini, selisih terhadap baseline berhenti bermakna sebagai
+# temuan dan hanya layak disebut indikasi awal.
+#
+# Bukan angka pilihan selera: pada 30 ulasan dengan proporsi 0,2, margin kesalahan 95% masih
+# sekitar +-14 poin persentase - sudah lebar, tetapi selisih yang benar-benar besar (20 poin
+# ke atas, yang memang muncul di kartu prioritas) masih dapat dibedakan dari nol. Pada 10
+# ulasan marginnya +-25 poin dan hampir semua selisih tenggelam di dalamnya.
+MIN_STORE_REVIEWS = 30
+
 Z_95 = 1.96  # untuk margin of error proporsi
 
 
@@ -39,6 +48,15 @@ def _confidence_level(sample_size: int) -> ConfidenceLevel:
     if sample_size >= CONFIDENCE_THRESHOLDS["sedang"]:
         return ConfidenceLevel.SEDANG
     return ConfidenceLevel.RENDAH
+
+
+# Keyakinan sebuah perbandingan tidak bisa melampaui sisi terlemahnya. Diurutkan dari yang
+# paling lemah supaya `min()` di bawah punya arti.
+_CONFIDENCE_ORDER = [ConfidenceLevel.RENDAH, ConfidenceLevel.SEDANG, ConfidenceLevel.TINGGI]
+
+
+def _weakest(*levels: ConfidenceLevel) -> ConfidenceLevel:
+    return min(levels, key=_CONFIDENCE_ORDER.index)
 
 
 def _margin_of_error(p: float, n: int) -> float:
@@ -97,6 +115,14 @@ def compare_category_baseline(
         baseline_pct = float(entry["pct_negative"])
         aspect_n = int(entry.get("sample_size", sample_size))
 
+        # Sisi toko dinilai dengan alat yang sama seperti sisi baseline, dan itu justru
+        # intinya: sebelum ini hanya satu sisi yang pernah ditimbang.
+        preliminary = total_reviews < MIN_STORE_REVIEWS
+        confidence = _weakest(
+            _confidence_level(aspect_n),
+            ConfidenceLevel.RENDAH if preliminary else _confidence_level(total_reviews),
+        )
+
         records.append(
             BenchmarkRecord(
                 category=category,
@@ -104,9 +130,12 @@ def compare_category_baseline(
                 store_pct=store_pct,
                 baseline_pct=round(baseline_pct, 4),
                 baseline_sample_size=aspect_n,
-                confidence_level=_confidence_level(aspect_n),
+                confidence_level=confidence,
                 gap=round(store_pct - baseline_pct, 4),
                 margin_of_error=_margin_of_error(baseline_pct, aspect_n),
+                store_sample_size=total_reviews,
+                store_margin_of_error=_margin_of_error(store_pct, total_reviews),
+                preliminary=preliminary,
             )
         )
 

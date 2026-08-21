@@ -87,6 +87,48 @@ dipilih (tanpa filter ini, kartu "perbaiki keterangan ukuran" sempat mendapat ku
 Itu pekerjaan frontend pada Fase 6 dan tercatat sebagai perbaikan yang direncanakan, bukan
 sebagai sesuatu yang sudah beres.
 
+## Angka keyakinan model belum terkalibrasi, dan karena itu tidak ditampilkan
+
+`AspectPrediction.confidence` bukan probabilitas. Nilainya **konstanta**: 0,80 saat checkpoint
+IndoBERT aktif dan 0,60 saat sistem jatuh ke leksikon (`adapters/text_model.py`). Ia dipasang
+sebagai penanda sementara pada Fase 5 supaya rumus prioritas punya faktor keyakinan, dan tidak
+pernah diganti dengan angka sungguhan.
+
+Selama beberapa waktu angka itu tampil di laporan sebagai "Keyakinan model: 80% rata-rata",
+bersebelahan dengan jumlah sebutan dan persentase keluhan yang memang dihitung dari data. Di
+tempat seperti itu ia terbaca sebagai hasil pengukuran. Ia bukan - dan sebuah angka tetap yang
+menyamar sebagai pengukuran merusak kepercayaan pada seluruh angka di sekitarnya, termasuk yang
+benar-benar diukur.
+
+Yang dilakukan: **angkanya dicabut dari antarmuka**. Ia tetap ada di payload API dan tetap
+menjadi faktor pada rumus prioritas - di sana pengaruhnya sama besar untuk semua aspek, jadi
+urutan kartu tidak terdistorsi olehnya.
+
+Solusi sejatinya bukan menyembunyikan, melainkan mengukur: temperature scaling (Guo et al.,
+2017) satu parameter per head, di-fit pada split validasi, dengan ECE sebelum-sesudah dilaporkan
+di MODEL_CARD. Selama itu belum ada, produk ini lebih baik diam soal keyakinannya daripada
+menyebut angka yang tidak berasal dari mana pun.
+
+## Perbandingan terhadap baseline butuh sampel di KEDUA sisi
+
+Penilaian keyakinan benchmark semula hanya melihat besar sampel baseline (`CONFIDENCE_THRESHOLDS`
+= 500/100 ulasan). Sisi toko tidak pernah ditimbang sama sekali.
+
+Akibatnya toko dengan 5 ulasan yang dibandingkan terhadap baseline 40.000 ulasan tampil dengan
+label **"keyakinan tinggi"**, lengkap dengan kolom selisih yang terbaca sebagai temuan. Padahal
+margin kesalahan 95% pada proporsi dari 5 ulasan sekitar **±40 poin persentase** - lebih lebar
+daripada hampir semua selisih yang mungkin muncul, sehingga tanda selisihnya sendiri (di atas
+atau di bawah rata-rata) bisa terbalik tanpa datanya berubah.
+
+Yang dilakukan: `BenchmarkRecord` membawa `store_sample_size`, `store_margin_of_error`, dan
+`preliminary`. Di bawah **30 ulasan** perbandingannya berstatus indikasi awal - kolom selisih
+tidak dirender, modifier benchmark pada rumus prioritas dinolkan, dan kalimat rekomendasi tidak
+menyebut baseline. Angka toko dan angka baseline tetap ditampilkan apa adanya; yang ditahan
+hanya klaim perbandingannya.
+
+Ambang 30 dipilih karena di sanalah margin turun ke sekitar ±14 poin - masih lebar, tetapi
+selisih 20 poin ke atas (yang memang muncul di kartu prioritas) sudah dapat dibedakan dari nol.
+
 ## Keterbatasan fitur Tier 1 yang baru dibangun
 
 **Tanya jawab hanya mengenali satu topik per pertanyaan.** `_detect_aspect()` memilih aspek
@@ -270,3 +312,52 @@ pengguna dan dapat dihapusnya, tetapi tetap sebuah keterbatasan.
 Kemampuan ini **tidak** menyimpulkan apa pun dari isi gambar. Ia hanya mengubah piksel huruf
 menjadi huruf. Menilai kondisi barang dari foto adalah kemampuan terpisah yang statusnya masih
 NO-GO (butir berikutnya).
+
+## Jalur visual: kodenya lengkap, jalannya masih tertutup dua pintu
+
+Setelah pekerjaan L3/L4, seluruh rantai visual ada dan diuji: probe linear di atas CLIP beku
+(`ml/visual/linear_probe.py`), adapter yang memuatnya (`adapters/vision_model.py`), fusion
+teks+foto (`tools/fusion.py`), dan kartu kontradiksi di laporan. Tetapi ia **mati di produksi**,
+dan dua alasannya berbeda sifat.
+
+**Pintu pertama - gerbangnya belum lolos.** Zero-shot dinyatakan NO-GO (akurasi argmax 45%
+terhadap pembanding sepele 61%). Perumusan ulang menjadi biner "perlu diperiksa" ada di
+`linear_probe.py` dan siap dijalankan, tetapi menuntut foto berlabel yang lebih banyak - target
+≥150 foto sisi bermasalah dari ≥3 produk berbeda, sedangkan yang ada sekarang 97 foto dari dua
+produk fesyen satu penjual.
+
+Yang berubah: vonis gerbang sekarang **dijalankan kode**, bukan diingat orang. `--simpan`
+menulis medan `keputusan` ke dalam artefak probe, dan `VisionModelAdapter` menolak aktif kalau
+isinya bukan GO atau CONDITIONAL GO. Vonis yang belum dikenal juga menolak - daftarnya putih,
+bukan hitam. Alasan penolakan keluar lewat `/readiness`, jalur yang sama dengan kegagalan
+checkpoint teks.
+
+**Pintu kedua - belum ada jalan masuk bagi foto produk.** `/api/v1/ocr` menerima gambar tetapi
+hanya membaca teksnya lalu membuangnya; `RawReview.image_paths` berisi path yang hanya berarti
+di mesin klien. Tidak ada endpoint yang menerima foto produk untuk dianalisis.
+
+Ini bukan kelalaian: membangunnya sekarang berarti menambah permukaan unggah, penyimpanan
+sesi untuk gambar, dan kendali privasinya sendiri - untuk jalur yang gerbangnya belum lolos.
+Yang dipasang sebagai gantinya adalah cantelan `AnalyzeService(image_source=...)`, yang membuat
+sisa jalurnya dapat diuji sekarang dengan sumber tiruan. Test integrasinya menutupi kontradiksi,
+abstention, dan degradasi saat model visual gagal.
+
+Konsekuensi yang harus dibaca apa adanya: **`AnalysisResult.contradictions` selalu kosong hari
+ini**, dan bagiannya tidak dirender. Fitur "foto membantah teksnya" ada di kode dan tidak ada
+di layar.
+
+## Riwayat antar-sesi ada, tetapi bergantung pengguna menyimpan arsipnya
+
+L5 memenuhi baris Roadmap "riwayat antar-sesi" tanpa database, dengan membalik siapa yang
+menyimpan: pengguna mengunduh arsip JSON berisi agregat, lalu mengunggahnya kembali sebagai
+pembanding.
+
+Batas yang jujur disebut: **kalau arsipnya hilang, riwayatnya hilang.** Tidak ada pemulihan,
+tidak ada salinan di server, dan tidak akan ada. Untuk pengguna yang tidak terbiasa mengelola
+berkas, ini beban nyata - dan itu harga yang dibayar untuk janji "kami tidak menyimpan apa pun".
+
+Batas kedua: perbandingannya hanya sesahih dua sampel yang dibandingkan. Selisih yang tidak
+melampaui margin kesalahan gabungan ditandai "belum berarti" alih-alih dibaca sebagai
+keberhasilan, dan pada dua batch tiga puluhan ulasan hampir semua selisih jatuh ke sana. Itu
+perilaku yang benar, tetapi berarti fitur ini baru terasa berguna bagi toko yang benar-benar
+punya ratusan ulasan per periode.

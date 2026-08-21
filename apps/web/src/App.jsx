@@ -48,12 +48,27 @@ export default function App() {
 
   return (
     <>
+      {/* `hidden` DAN `inert` pada permukaan yang tidak aktif, bukan salah satunya.
+        *
+        * `hidden` bergantung pada `display: none` yang bisa dikalahkan aturan CSS mana pun -
+        * dan permukaan ini punya kelas beranimasi (`.route--in`) plus lima berkas gaya yang
+        * bebas menyentuh `display`. Sekali ada aturan yang menang, seluruh isi halaman yang
+        * "tersembunyi" kembali masuk urutan tab: pengguna papan ketik di dashboard menekan
+        * Tab dan fokusnya menghilang ke tombol-tombol halaman pemasaran yang tidak terlihat
+        * di layar, tanpa cara menyadarinya selain kehilangan jejak kursor.
+        *
+        * `inert` tidak lewat CSS. Ia mencabut seluruh subtree dari urutan fokus, dari pohon
+        * aksesibilitas, dan dari peristiwa penunjuk sekaligus - jadi kalaupun `display`-nya
+        * bocor, isinya tetap tidak dapat dijangkau. Nilainya string kosong, bukan `true`:
+        * React 18 menolak boolean pada atribut yang belum dikenalnya dan justru tidak
+        * merendernya sama sekali.
+        */}
       <div className="route route--in" ref={frame} data-dir={direction}>
-        <div hidden={route !== "landing"}>
+        <div hidden={route !== "landing"} inert={route !== "landing" ? "" : undefined}>
           <LandingScreen theme={theme} onToggleTheme={toggleTheme} />
         </div>
         {dashboardPernahDibuka && (
-          <div hidden={route !== "dashboard"}>
+          <div hidden={route !== "dashboard"} inert={route !== "dashboard" ? "" : undefined}>
             <DashboardScreen theme={theme} onToggleTheme={toggleTheme} />
           </div>
         )}

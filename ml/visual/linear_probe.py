@@ -49,6 +49,10 @@ TASK_CSV = REPO / "data" / "annotation" / "visual_labeling_task.csv"
 PHOTOS = REPO / "data" / "raw" / "review_photos"
 CACHE = REPO / "ml" / "embeddings" / "clip_probe_features.npz"
 OUT = REPO / "ml" / "evaluation" / "visual_probe.json"
+# Artefak yang benar-benar dipakai backend. Formatnya npz karena isinya cuma matriks kecil
+# (koefisien 512x2) plus metadata - pickle sebuah objek sklearn akan menyeret versi
+# sklearn ikut menjadi ketergantungan runtime image API, yang sengaja tidak memasangnya.
+PROBE_OUT = REPO / "models" / "visual-probe" / "probe.npz"
 
 MODEL = "openai/clip-vit-base-patch32"
 
@@ -334,9 +338,60 @@ def jalankan(X, rows, biner: bool, ulang: int) -> dict:
     return ringkas
 
 
+def simpan_probe(X, rows, ringkas: dict, path=PROBE_OUT) -> dict:
+    """Latih probe final pada SELURUH data berlabel dan tulis artefak yang dapat dimuat backend.
+
+    Dua hal yang membuat berkas ini boleh ada meski gerbangnya belum tentu lolos:
+
+    1. **Vonis gerbang ikut ditulis ke dalamnya.** Backend membaca `keputusan` dari artefak dan
+       menolak menyalakan jalur visual kalau isinya NO-GO. Gerbang berhenti menjadi kalimat di
+       dokumen yang bisa dilupakan orang, dan menjadi syarat yang dijalankan kode.
+    2. **Ambang abstention ikut dibawa.** Ia dikalibrasi di dalam fold latih saat evaluasi;
+       menaruhnya di artefak memastikan produksi memakai ambang yang SAMA dengan yang angkanya
+       dilaporkan, bukan ambang bawaan yang tidak pernah diukur.
+
+    Probe final dilatih pada seluruh data - itu benar dan bukan kebocoran. Angka yang dilaporkan
+    berasal dari cross-validation; model yang dikirim boleh memakai semua label yang ada,
+    persis seperti model teks yang dilatih ulang pada train+val setelah hyperparameternya
+    dipilih.
+    """
+    from sklearn.linear_model import LogisticRegression  # noqa: PLC0415
+
+    dinilai = [i for i, r in enumerate(rows) if r["gold"]]
+    y = np.array(
+        ["perlu_diperiksa" if rows[i]["gold"] in MASALAH else "normal" for i in dinilai]
+    )
+    clf = LogisticRegression(max_iter=2000, C=1.0, class_weight="balanced").fit(X[dinilai], y)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    meta = {
+        "encoder": MODEL,
+        "perumusan": "biner_perlu_diperiksa",
+        "keputusan": ringkas["keputusan"],
+        "alasan": ringkas["alasan"],
+        "min_confidence": ringkas["min_confidence_terpilih"]["rata2"],
+        "selective_accuracy": ringkas["selective_accuracy"]["rata2"],
+        "coverage": ringkas["coverage"]["rata2"],
+        "n_berlabel": int(len(dinilai)),
+    }
+    np.savez(
+        path,
+        coef=clf.coef_.astype(np.float32),
+        intercept=clf.intercept_.astype(np.float32),
+        classes=np.array([str(c) for c in clf.classes_]),
+        meta=json.dumps(meta, ensure_ascii=False),
+    )
+    return meta
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ulang", type=int, default=12, help="jumlah pengulangan cross-validation")
+    ap.add_argument(
+        "--simpan",
+        action="store_true",
+        help="tulis artefak probe yang dapat dimuat backend (models/visual-probe/probe.npz)",
+    )
     args = ap.parse_args()
 
     rows = load_gold()
@@ -393,6 +448,16 @@ def main() -> int:
         encoding="utf-8",
     )
     print(f"\nDitulis ke {OUT}")
+
+    if args.simpan:
+        meta = simpan_probe(X, rows, hasil["biner_perlu_diperiksa"])
+        print(f"Artefak probe ditulis ke {PROBE_OUT}")
+        print(f"  vonis gerbang di dalam artefak: {meta['keputusan']}")
+        if meta["keputusan"] == "NO-GO":
+            print(
+                "  Backend AKAN MENOLAK menyalakan jalur visual dengan artefak ini. Itu memang\n"
+                "  yang seharusnya terjadi - vonisnya dijalankan kode, bukan diingat orang."
+            )
     return 0
 
 

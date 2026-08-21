@@ -1,7 +1,12 @@
 """Backend Ulasin - FastAPI, satu service (blueprint bagian 27, 28, ADR-008).
 
-Enam endpoint Tier 1. Seluruhnya **sinkron**: satu input masuk, satu output AI keluar, tanpa
-background job (batas MVP rulebook bagian 2.4).
+Sebelas endpoint. Seluruhnya **sinkron**: satu input masuk, satu output keluar, tanpa background
+job (batas MVP rulebook bagian 2.4).
+
+Empat di antaranya - `/reply-drafts`, `/trace`, `/archive`, `/compare` - adalah permintaan
+LANJUTAN atas satu analisis. Ketiganya yang pertama membaca artefak sesi yang sama dengan Q&A
+dan menolak dengan jujur setelah sesinya kedaluwarsa; yang terakhir tidak menyimpan apa pun
+sama sekali - arsip pembandingnya datang di dalam badan permintaan, dari berkas milik pengguna.
 
 Model dimuat SEKALI saat startup, bukan per-request (bagian 27.2). `/readiness` baru
 mengembalikan 200 setelah pemuatan selesai, sehingga frontend tidak menembak API yang belum siap.
@@ -26,7 +31,10 @@ if str(APP_ROOT.parent) not in sys.path:
     sys.path.insert(0, str(APP_ROOT.parent))
 
 from app.schemas import (  # noqa: E402
+    ActionTrace,
+    AnalysisArchive,
     AnalysisResult,
+    ArchiveComparison,
     ConfidenceLevel,
     ErrorCode,
     ErrorResponse,
@@ -34,6 +42,7 @@ from app.schemas import (  # noqa: E402
     OcrResponse,
     QnAResponse,
     RawReview,
+    ReplyDraftResponse,
     verify_taxonomy_matches_config,
 )
 from app.services.analyze import AnalyzeService  # noqa: E402
@@ -161,6 +170,27 @@ class QuestionRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
 
 
+class AnalysisRef(BaseModel):
+    """Menunjuk satu analisis yang masih hidup di memori proses."""
+
+    analysis_id: str
+
+
+class CardRequest(AnalysisRef):
+    """Menunjuk satu Action Card di dalam satu analisis - dipakai draf balasan dan jejak."""
+
+    action_id: str = Field(min_length=1, max_length=32)
+
+
+class CompareRequest(AnalysisRef):
+    """Arsip lama datang di dalam badan permintaan, bukan diambil dari penyimpanan.
+
+    Itu bukan kerepotan yang bisa dihindari melainkan seluruh gagasannya: server tidak punya
+    tempat untuk mengambilnya, dan tidak akan pernah punya."""
+
+    previous: AnalysisArchive
+
+
 @app.get("/api/v1/health")
 def health() -> dict:
     """Proses backend hidup. Tidak menjamin model sudah siap - itu tugas /readiness."""
@@ -219,7 +249,15 @@ def demo_sample(dataset: str = DEFAULT_SAMPLE) -> dict:
 
 
 @app.post("/api/v1/analyze", response_model=AnalysisResult)
-def analyze(payload: AnalyzeRequest, request: Request):
+def analyze(payload: AnalyzeRequest, request: Request, trace: bool = False):
+    """Analisis satu batch ulasan.
+
+    `?trace=1` menyertakan rantai perhitungan penuh pada tiap Action Card - klausa asal,
+    prediksinya, agregasi, dan komponen skor prioritas. Dimatikan secara baku karena payload
+    biasa tidak perlu memikulnya; yang meminta jejak sedang MEMERIKSA sistem, bukan memakainya.
+    Antarmuka mengambilnya lewat `/api/v1/trace` saat pengguna membuka panelnya, sehingga
+    laporan yang tidak dibuka jejaknya tidak pernah membayar ongkosnya.
+    """
     if not state["ready"] or state["service"] is None:
         return _error(
             ErrorCode.MODEL_LOAD_FAILED,
@@ -237,7 +275,7 @@ def analyze(payload: AnalyzeRequest, request: Request):
 
     started = time.time()
     try:
-        result = state["service"].analyze(payload.reviews)
+        result = state["service"].analyze(payload.reviews, trace=trace)
     except Exception as exc:
         log.exception("analisis gagal")
         return _error(
@@ -314,6 +352,123 @@ async def ocr(images: list[UploadFile] = File(...)):
     # Tanpa PII dan tanpa isi teks - hanya jumlah, sesuai bagian 37.1.
     log.info(f"ocr selesai: {len(terbaca)} gambar, {len(drafts)} draf ulasan")
     return OcrResponse(images=terbaca, reviews=drafts, notes=notes)
+
+
+_SESI_HABIS = (
+    "Hasil analisis ini sudah tidak tersimpan. Jalankan analisis ulang untuk memakainya lagi."
+)
+
+
+@app.post("/api/v1/reply-drafts", response_model=ReplyDraftResponse)
+def reply_drafts(payload: CardRequest):
+    """S1 - draf balasan penjual untuk ulasan yang mendukung satu Action Card.
+
+    Sinkron, deterministik, tanpa API luar: draf disusun dari template berisi slot yang diisi
+    data ulasan itu sendiri (lihat tools/replies.py). Dua kali permintaan atas kartu yang sama
+    menghasilkan teks yang sama persis - sifat yang sama dengan seluruh angka di produk ini,
+    dan sifat yang hilang begitu ada LLM di jalurnya.
+
+    Yang TIDAK dilakukan endpoint ini: mengirim balasannya. Ia menyerahkan teks; pengiriman
+    tetap milik pengguna, di kanal miliknya sendiri (ADR-013).
+    """
+    if not state["ready"] or state["service"] is None:
+        return _error(
+            ErrorCode.MODEL_LOAD_FAILED,
+            "Sistem masih menyiapkan model. Coba lagi sebentar lagi.",
+            recoverable=True,
+            action="Tunggu beberapa saat lalu ulangi.",
+        )
+    hasil = state["service"].reply_drafts(payload.analysis_id, payload.action_id)
+    if hasil is None:
+        return _error(
+            ErrorCode.EMPTY_DATA,
+            _SESI_HABIS,
+            recoverable=True,
+            action="Unggah ulang ulasan Anda lalu jalankan analisis lagi.",
+        )
+    # Tanpa PII dan tanpa isi teks - hanya jumlah, sesuai bagian 37.1.
+    log.info(f"reply-drafts: {payload.action_id}, {len(hasil.drafts)} draf")
+    return hasil
+
+
+@app.post("/api/v1/trace", response_model=ActionTrace)
+def trace(payload: CardRequest):
+    """S2 - rantai perhitungan satu Action Card, dari klausa mentah sampai skornya.
+
+    Diambil dari jejak yang SUDAH disusun saat analisis berjalan, bukan dihitung ulang:
+    prediksi per klausa hidup selama request analisis saja, dan menghidupkannya kembali berarti
+    menjalankan inferensi kedua atas data yang sudah dilepas.
+    """
+    if not state["ready"] or state["service"] is None:
+        return _error(
+            ErrorCode.MODEL_LOAD_FAILED,
+            "Sistem masih menyiapkan model. Coba lagi sebentar lagi.",
+            recoverable=True,
+            action="Tunggu beberapa saat lalu ulangi.",
+        )
+    hasil = state["service"].trace_for(payload.analysis_id, payload.action_id)
+    if hasil is None:
+        return _error(
+            ErrorCode.EMPTY_DATA,
+            _SESI_HABIS,
+            recoverable=True,
+            action="Unggah ulang ulasan Anda lalu jalankan analisis lagi.",
+        )
+    return hasil
+
+
+@app.post("/api/v1/archive", response_model=AnalysisArchive)
+def archive(payload: AnalysisRef):
+    """L5 - ringkasan agregat yang aman dibawa keluar sesi.
+
+    Isinya angka saja: tidak ada teks ulasan, kutipan, id ulasan, maupun nama produk. Berkas
+    ini akan berpindah lewat WhatsApp dan email, dan pemiliknya tidak akan membacanya sebelum
+    meneruskan - jadi ia harus aman dibaca siapa pun yang kebetulan menerimanya.
+
+    Server tetap tidak menyimpan apa pun. Yang berpindah tangan adalah berkas milik pengguna,
+    dan itulah yang membuat baris "riwayat antar-sesi" di Roadmap dapat dipenuhi tanpa
+    menyentuh larangan database (ADR-010).
+    """
+    if not state["ready"] or state["service"] is None:
+        return _error(
+            ErrorCode.MODEL_LOAD_FAILED,
+            "Sistem masih menyiapkan model. Coba lagi sebentar lagi.",
+            recoverable=True,
+            action="Tunggu beberapa saat lalu ulangi.",
+        )
+    hasil = state["service"].archive_for(payload.analysis_id)
+    if hasil is None:
+        return _error(
+            ErrorCode.EMPTY_DATA, _SESI_HABIS, recoverable=True,
+            action="Unggah ulang ulasan Anda lalu jalankan analisis lagi.",
+        )
+    return hasil
+
+
+@app.post("/api/v1/compare", response_model=ArchiveComparison)
+def compare(payload: CompareRequest):
+    """L5 - selisih antar-periode terhadap arsip yang diunggah pengguna sendiri.
+
+    Sinkron, stateless, tanpa penyimpanan: arsip lama datang di dalam badan permintaan dan
+    hilang bersama respons. Selisihnya dihitung tool (`tools/archive.py`), bukan di sisi klien -
+    aturan "seluruh angka berasal dari tool" berlaku juga untuk angka yang paling menggoda
+    dihitung di JavaScript (ADR-011).
+    """
+    if not state["ready"] or state["service"] is None:
+        return _error(
+            ErrorCode.MODEL_LOAD_FAILED,
+            "Sistem masih menyiapkan model. Coba lagi sebentar lagi.",
+            recoverable=True,
+            action="Tunggu beberapa saat lalu ulangi.",
+        )
+    hasil = state["service"].compare_with_archive(payload.analysis_id, payload.previous)
+    if hasil is None:
+        return _error(
+            ErrorCode.EMPTY_DATA, _SESI_HABIS, recoverable=True,
+            action="Unggah ulang ulasan Anda lalu jalankan analisis lagi.",
+        )
+    log.info(f"compare: {len(hasil.deltas)} aspek dibandingkan")
+    return hasil
 
 
 @app.post("/api/v1/questions", response_model=QnAResponse)

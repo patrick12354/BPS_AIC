@@ -74,7 +74,11 @@ export function DashboardScreen({ theme, onToggleTheme }) {
   const [batch, setBatch] = useState(0);
   const [result, setResult] = useState(null);
   const [decisions, setDecisions] = useState({});
-  const [openCard, setOpenCard] = useState(null);
+  // Lembar bukti menyimpan DUA hal: kartu mana, dan bagian mana yang dibuka. Pintunya
+  // tiga (bukti, draf balasan, jejak perhitungan) dan semuanya bermuara ke lembar yang
+  // sama, jadi yang ditekan pengguna harus ikut dibawa - kalau tidak, menekan "buat draf
+  // balasan" membuka lembar pada bagian bukti dan fiturnya seolah tidak ada.
+  const [openCard, setOpenCard] = useState(null); // { card, section }
 
   // Kategori pembanding, dipilih pengguna di layar unggah sebelum analisis berjalan.
   //
@@ -333,8 +337,12 @@ export function DashboardScreen({ theme, onToggleTheme }) {
               drafts={drafts}
               ocrBusy={ocrBusy}
               onPickShots={onPickShots}
-              onEditDraft={(id, text) =>
-                setDrafts((d) => d.map((x) => (x.review_id === id ? { ...x, text } : x)))
+              /* Menerima tambalan (`{ text }` atau `{ rating }`), bukan hanya teks: draf
+                 punya dua medan yang dapat disunting sejak pemilih bintang ditambahkan, dan
+                 dua penangan terpisah untuk satu bentuk data adalah cara termudah membuat
+                 keduanya menyimpang. */
+              onEditDraft={(id, patch) =>
+                setDrafts((d) => d.map((x) => (x.review_id === id ? { ...x, ...patch } : x)))
               }
               onRemoveDraft={(id) => setDrafts((d) => d.filter((x) => x.review_id !== id))}
               onClearShots={() => {
@@ -358,9 +366,10 @@ export function DashboardScreen({ theme, onToggleTheme }) {
                 <ReportPanel
                   result={result}
                   category={category}
+                  rentang={rentang}
                   decisions={decisions}
                   onDecide={(id, value) => setDecisions((d) => ({ ...d, [id]: value }))}
-                  onOpenEvidence={setOpenCard}
+                  onOpenEvidence={(card, section) => setOpenCard({ card, section })}
                 />
               )}
               {tab === "tanya" && (
@@ -379,8 +388,10 @@ export function DashboardScreen({ theme, onToggleTheme }) {
       </main>
 
       <EvidenceDialog
-        card={openCard}
-        decision={openCard ? decisions[openCard.action_id] : null}
+        card={openCard?.card ?? null}
+        section={openCard?.section}
+        analysisId={result?.analysis_id}
+        decision={openCard ? decisions[openCard.card.action_id] : null}
         onDecide={(id, value) => setDecisions((d) => ({ ...d, [id]: value }))}
         onClose={() => setOpenCard(null)}
       />

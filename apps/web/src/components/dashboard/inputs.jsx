@@ -233,6 +233,47 @@ export function FileInput({ file, mapping, onPick, onMap, onClear }) {
 // Tangkapan layar
 // --------------------------------------------------------------------------------------
 
+/** Pemilih bintang untuk satu draf.
+ *
+ * Rating tidak selalu terbaca dari tangkapan layar: bintangnya ikon, bukan teks, dan OCR
+ * membaca teks. Sebelumnya nilainya hanya DITAMPILKAN kalau kebetulan terbaca, tanpa satu pun
+ * cara mengisinya sendiri - padahal orang yang sedang menatap tangkapan layarnya bisa melihat
+ * bintangnya dalam sekejap.
+ *
+ * Yang hilang bersama rating bukan hiasan. `severity` sebuah keluhan diturunkan dari rating
+ * ulasannya (`_severity_from` di adapter teks), dan severity adalah salah satu dari tiga
+ * pengali inti rumus prioritas. Draf tanpa rating karenanya masuk analisis dengan keparahan
+ * paling rendah, apa pun bunyi keluhannya - jalur tangkapan layar diam-diam menghasilkan
+ * urutan prioritas yang berbeda dari jalur CSV untuk ulasan yang sama persis.
+ *
+ * `select` bawaan, bukan lima tombol bintang: di ponsel ia membuka pemilih milik sistem yang
+ * sasaran sentuhnya sudah cukup besar, dan pembaca layar mengumumkannya sebagai satu kendali
+ * bernama alih-alih lima tombol yang harus ditebak hubungannya.
+ */
+function DraftRating({ id, value, onChange }) {
+  return (
+    <span className="draft__bintang">
+      <label className="sr-only" htmlFor={`rating-${id}`}>
+        Rating ulasan ini
+      </label>
+      <select
+        id={`rating-${id}`}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+      >
+        {/* "Tanpa rating" adalah pilihan sah dan tetap yang pertama: menebak bintang yang
+            tidak terlihat lebih buruk daripada mengosongkannya. */}
+        <option value="">Tanpa rating</option>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <option key={n} value={n}>
+            {n}/5
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 /** Hasil OCR selalu ditampilkan sebagai draf yang bisa disunting, tidak pernah langsung
  *  dianalisis. Pembacaan teks dari gambar TIDAK pernah sempurna - huruf yang salah baca akan
  *  merambat ke seluruh hasil analisis, dan pemilik toko adalah satu-satunya yang tahu bunyi
@@ -273,7 +314,11 @@ export function ScreenshotInput({ shots, drafts, busy, onPick, onEdit, onRemove,
           <div className="draft__head">
             <span className="draft__no">Ulasan {i + 1}</span>
             <div className="draft__meta">
-              {d.rating && <span className="draft__rating">{d.rating}/5</span>}
+              <DraftRating
+                id={d.review_id}
+                value={d.rating}
+                onChange={(rating) => onEdit(d.review_id, { rating })}
+              />
               <span className={`draft__conf draft__conf--${d.confidence_level}`}>
                 {d.confidence_level === "rendah" ? "perlu diperiksa" : "terbaca jelas"}
               </span>
@@ -294,7 +339,7 @@ export function ScreenshotInput({ shots, drafts, busy, onPick, onEdit, onRemove,
             className="draft__text"
             value={d.text}
             rows={Math.min(6, Math.max(2, Math.ceil(d.text.length / 58)))}
-            onChange={(e) => onEdit(d.review_id, e.target.value)}
+            onChange={(e) => onEdit(d.review_id, { text: e.target.value })}
           />
         </div>
       ))}

@@ -247,3 +247,51 @@ def test_prediksi_tetap_menempel_pada_ulasan_asalnya():
 def test_classify_pada_daftar_kosong_tidak_meledak():
     adapter = TextModelAdapter(checkpoint=__import__("pathlib").Path("__tidak-ada__"))
     assert adapter.classify([]) == []
+
+
+# ---------------------------------------------------------------- kalibrasi (L1)
+#
+# Sisi checkpoint dari kalibrasi diuji `tests/unit/test_calibration.py` pada logit sintetis.
+# Yang diuji di sini kabelnya: bahwa adapter tidak pernah MENGAKU terkalibrasi saat ia bukan.
+
+
+def test_jalur_leksikon_tidak_pernah_mengaku_terkalibrasi():
+    """Ini penjaga yang menentukan angka keyakinan boleh tampil atau tidak di layar.
+
+    Leksikon tidak menghasilkan probabilitas sama sekali - ia menghitung selisih jumlah kata.
+    Kalau `calibrated` bocor menjadi True di jalur ini, angka 0,60 yang tidak berarti apa pun
+    akan tampil di laporan sebagai "keyakinan model, terkalibrasi".
+    """
+    from pathlib import Path
+
+    from app.adapters.text_model import LEXICON_CONFIDENCE, TextModelAdapter
+
+    adapter = TextModelAdapter(checkpoint=Path("__checkpoint-tidak-ada__.pt"))
+    assert adapter.mode == "fallback"
+    assert adapter.calibrated is False
+    assert adapter.sentiment_temperature == 1.0
+    assert adapter.fallback_reason
+
+    reviews = [
+        ProcessedReview(
+            review_id="r1", clean_text="paketnya telat dan kemasannya penyok",
+            pii_redacted=False, rating=2, category=Category.FASHION, has_image=False,
+        )
+    ]
+    hasil = adapter.classify(reviews)
+    assert hasil[0].predictions
+    for item in hasil[0].predictions:
+        assert item.confidence == LEXICON_CONFIDENCE
+
+
+def test_suhu_baku_tidak_mengubah_apa_pun():
+    """Suhu 1,0 berarti pembagiannya tidak berefek - jalur inferensi checkpoint yang belum
+    dikalibrasi harus identik dengan sebelum fitur ini ada."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ml" / "text"))
+    from calibration import softmax
+
+    logits = [2.0, 0.5, -1.0]
+    assert softmax(logits, 1.0) == softmax(logits)

@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import time
 
-from app.schemas import Aspect, AspectAggregate, EvidenceCitation, Severity, Trend
+from app.schemas import (
+    ActionCard,
+    ActionCategory,
+    Aspect,
+    AspectAggregate,
+    EvidenceCitation,
+    Severity,
+    Trend,
+    Urgency,
+)
 from app.tools import QnAContext, QnAStore, answer_question
 from app.tools.qna import _stem, is_out_of_domain
 
@@ -209,3 +218,125 @@ def test_tanpa_korpus_pertanyaan_topikal_ditolak():
     """
     assert is_out_of_domain("kenapa pengiriman lama sekali?", set()) is True
     assert is_out_of_domain("apa keluhan pembeli?", set()) is False
+
+
+# ---------------------------------------------------------------- maksud pertanyaan
+#
+# Tiga temuan audit yang ditutup di sini. Ketiganya bentuk pertanyaan yang wajar, dan
+# ketiganya sebelumnya dijawab salah bentuk - bukan salah angka, yang justru membuatnya
+# lebih sulit disadari pengguna.
+
+
+def _card(
+    action_id="ACT-001", aspect=Aspect.PENGIRIMAN, score=42.5, title="Tinjau proses pengiriman"
+) -> ActionCard:
+    return ActionCard(
+        action_id=action_id,
+        title=title,
+        one_line_summary="8 dari 40 ulasan (20%) menyebut masalah pada pengiriman",
+        aspect=aspect,
+        frequency=8,
+        frequency_total=10,
+        severity=Severity.SEDANG,
+        confidence=0.8,
+        trend=Trend.STABIL,
+        priority_score=score,
+        urgency=Urgency.SEDANG,
+        evidence_quotes=[
+            EvidenceCitation(
+                citation_id="c1", review_id="r9", quote="paketnya telat seminggu",
+                relevance_score=0.7, aspect=aspect,
+            )
+        ],
+        priority_reasoning="8 dari 40 ulasan (20%) menyebut masalah pada aspek ini.",
+        recommended_action="Tinjau cara Anda mengemas dan mengirim pesanan.",
+        action_category=ActionCategory.PACKAGING,
+        expected_outcome="Keluhan menurun",
+        estimated_effort="rendah",
+        suggested_owner="pemilik toko",
+        risk_if_not_done="Keluhan berulang",
+        risk_if_recommendation_wrong="Periksa dulu kutipannya",
+    )
+
+
+def test_pertanyaan_prioritas_tidak_lagi_ditolak_penjaga_domain():
+    """T1 - pertanyaan paling wajar seorang pemilik toko, dan yang paling sering ditanyakan.
+
+    Setelah kata tata bahasa dibuang, yang tersisa hanyalah "perbaiki" dan "duluan" - dua kata
+    yang tidak pernah muncul di dalam ulasan pembeli, sehingga rasio tak dikenalnya 1,0.
+    """
+    for q in [
+        "apa yang harus saya perbaiki duluan?",
+        "mulai dari mana sebaiknya saya membenahi toko?",
+        "aspek mana yang harus diprioritaskan?",
+    ]:
+        assert is_out_of_domain(q, REVIEW_WORDS) is False, q
+
+
+def test_pertanyaan_prioritas_dijawab_dengan_tindakan_bukan_statistik():
+    ctx = _ctx()
+    ctx.actions = [_card(), _card("ACT-002", Aspect.KEMASAN, 30.0, "Tinjau proses kemasan")]
+    res = answer_question(ctx, "apa yang harus saya perbaiki duluan?")
+    assert res.no_answer is False
+    assert "Tinjau proses pengiriman" in res.answer
+    assert "42.5" in res.answer  # skor prioritas yang benar-benar dihitung
+    assert res.citations  # tetap wajib berbukti
+
+
+def test_jawaban_prioritas_mengikuti_urutan_kartu_bukan_frekuensi():
+    """Skor prioritas bukan sekadar frekuensi - dua urutan berbeda dari satu sistem akan
+    membuat pengguna berhenti percaya pada keduanya."""
+    ctx = _ctx(aggregates=[_agg(Aspect.KEMASAN, 1, 20), _agg(Aspect.PENGIRIMAN, 2, 3)])
+    ctx.actions = [_card("ACT-001", Aspect.PENGIRIMAN, 50.0, "Tinjau proses pengiriman")]
+    res = answer_question(ctx, "apa prioritas pertama saya?")
+    assert "pengiriman" in res.answer
+    assert "kemasan" not in res.answer
+
+
+def test_tanpa_kartu_aksi_jawaban_prioritas_mengaku_apa_adanya():
+    ctx = _ctx(aggregates=[_agg(Aspect.PENGIRIMAN, 10, 0)])
+    res = answer_question(ctx, "apa yang harus saya perbaiki duluan?")
+    assert "tidak ada aspek yang cukup sering dikeluhkan" in res.answer
+
+
+def test_pertanyaan_pujian_dijawab_dengan_pujian():
+    """T2 - sebelumnya pertanyaan pujian dijawab dengan daftar keluhan."""
+    aggs = [_agg(Aspect.PENGIRIMAN, 2, 8), _agg(Aspect.KEMASAN, 12, 1)]
+    res = answer_question(_ctx(aggregates=aggs), "apa yang paling disukai pembeli saya?")
+    assert "kemasan" in res.answer
+    assert "12" in res.answer
+    assert "keluhan" not in res.answer
+
+
+def test_pertanyaan_pujian_meminta_kutipan_pujian():
+    class Idx(StubIndex):
+        def retrieve(self, query, aspect=None, top_k=3, **kw):
+            self.kw = kw
+            return super().retrieve(query, aspect, top_k, **kw)
+
+    idx = Idx()
+    answer_question(_ctx(index=idx), "apa kelebihan toko saya menurut pembeli?")
+    assert idx.kw.get("positive_only") is True
+
+
+def test_pengingkaran_membatalkan_maksud_pujian():
+    """"tidak disukai" memuat "disukai" - tanpa penjaga ini, jawabannya jadi kebalikannya."""
+    aggs = [_agg(Aspect.PENGIRIMAN, 2, 8), _agg(Aspect.KEMASAN, 12, 1)]
+    res = answer_question(_ctx(aggregates=aggs), "apa yang tidak disukai pembeli?")
+    assert "keluhan" in res.answer
+
+
+def test_pertanyaan_persentase_dihitung_bukan_diabaikan():
+    """T3 - angkanya sudah ada, hanya tidak pernah sampai ke jawaban."""
+    ctx = _ctx(aggregates=[_agg(Aspect.PENGIRIMAN, 2, 8)])
+    ctx.reviews_with_complaint = 10
+    res = answer_question(ctx, "berapa persen ulasan yang mengeluh?")
+    assert "25%" in res.answer  # 10 dari 40
+    assert "10" in res.answer and "40" in res.answer
+
+
+def test_pertanyaan_persentase_per_aspek_menyebut_penyebutnya():
+    """Persentase tanpa penyebut adalah cara paling mudah menyesatkan pembaca."""
+    res = answer_question(_ctx(aggregates=[_agg(Aspect.KEMASAN, 5, 15)]), "berapa persen keluhan kemasan?")
+    assert "20" in res.answer and "40" in res.answer
+    assert "dari seluruh ulasan" in res.answer

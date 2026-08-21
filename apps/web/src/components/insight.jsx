@@ -6,9 +6,10 @@
  * 2. Warna tidak pernah menjadi satu-satunya penanda; setiap badge urgensi memuat teksnya.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOverflowX } from "../lib/hooks.js";
 import { QUALITY_LABEL, URGENCY_LABEL, VISUAL_LABEL, aspectLabel, pct } from "../lib/format.js";
+import { ReplyDrafts, TracePanel } from "./dashboard/CardTools.jsx";
 
 /** Menyisipkan angka dalam kalimat dengan gaya angka terhitung. */
 export function Narrative({ text, className = "body" }) {
@@ -98,11 +99,24 @@ export function ActionCard({ card, decision, onDecide, onOpenEvidence, index = 0
         <EvidenceStrip key={c.citation_id} citation={c} />
       ))}
 
-      {card.evidence_quotes.length > 0 && (
-        <button className="link-more" onClick={() => onOpenEvidence(card)}>
-          Lihat semua bukti ({card.evidence_quotes.length}) →
+      {/* Tiga pintu ke lembar yang sama, masing-masing membuka bagiannya sendiri. Satu pintu
+          berlabel "Lihat detail" akan menyembunyikan dua fitur di baliknya; tiga label yang
+          menyebut isinya membuat keduanya benar-benar ditemukan. */}
+      <div className="acard__pintu">
+        {card.evidence_quotes.length > 0 && (
+          <button className="link-more" onClick={() => onOpenEvidence(card, "bukti")}>
+            Lihat semua bukti ({card.evidence_quotes.length}) →
+          </button>
+        )}
+        {card.evidence_quotes.length > 0 && (
+          <button className="link-more" onClick={() => onOpenEvidence(card, "balasan")}>
+            Buat draf balasan →
+          </button>
+        )}
+        <button className="link-more" onClick={() => onOpenEvidence(card, "jejak")}>
+          Bagaimana angka ini dihitung? →
         </button>
-      )}
+      </div>
 
       <DecisionRow actionId={card.action_id} decision={decision} onDecide={onDecide} />
       {decision && (
@@ -141,9 +155,27 @@ export function DataQualityCard({ quality }) {
   );
 }
 
+/** Perbandingan terhadap baseline kategori.
+ *
+ * Kolom "Selisih" HILANG - bukan dikosongkan, bukan diberi tanda tanya - saat sisi tokonya
+ * masih terlalu tipis untuk dibandingkan. Alasannya bukan kehati-hatian umum melainkan
+ * aritmetika yang bisa diperiksa: pada 5 ulasan, proporsi apa pun membawa margin kesalahan
+ * sekitar +-40 poin persentase, sehingga "selisih +12 poin" dan "selisih -12 poin" adalah
+ * pembacaan yang sama sahnya atas data yang sama. Menampilkan salah satunya sebagai temuan
+ * berarti memilih satu dari dua kesimpulan berlawanan dengan cara melempar koin, lalu
+ * mencetaknya dengan gaya angka terhitung.
+ *
+ * Angka toko dan angka baseline tetap ditampilkan apa adanya. Yang ditahan hanya KLAIM
+ * perbandingannya, karena itu satu-satunya bagian yang tidak didukung datanya.
+ */
 export function BenchmarkCard({ rows }) {
   const [scroll, fits] = useOverflowX();
   if (!rows?.length) return null;
+
+  // Ambang berlaku per sesi, bukan per baris: penyebutnya jumlah ulasan yang sama untuk
+  // seluruh aspek. Diambil dari baris pertama supaya tabelnya tidak setengah berkolom.
+  const awal = Boolean(rows[0].preliminary);
+
   return (
     <section className="panel">
       <div className="panel-title">Benchmark kategori</div>
@@ -151,6 +183,18 @@ export function BenchmarkCard({ rows }) {
         Dibandingkan terhadap rata-rata kategori dari data publik. Bukan data toko pesaing, dan
         bersifat historis, bukan pemantauan langsung.
       </p>
+
+      {awal && (
+        <div className="banner-grey" style={{ marginTop: 0 }}>
+          <b>Indikasi awal.</b> Data Anda baru{" "}
+          <span className="stat">{rows[0].store_sample_size}</span> ulasan, sehingga angka sisi
+          toko sendiri masih bermargin ±
+          <span className="stat">{pct(rows[0].store_margin_of_error)}</span>. Selisih terhadap
+          rata-rata kategori belum ditampilkan karena pada rentang selebar itu ia belum dapat
+          dibedakan dari nol. Kumpulkan sekitar 30 ulasan untuk melihatnya.
+        </div>
+      )}
+
       <div className={`mtable-scroll ${fits ? "mtable-scroll--fit" : ""}`} ref={scroll}>
         <table className="mtable">
           <thead>
@@ -158,7 +202,7 @@ export function BenchmarkCard({ rows }) {
               <th>Aspek</th>
               <th>Toko Anda</th>
               <th>Rata-rata</th>
-              <th>Selisih</th>
+              {!awal && <th>Selisih</th>}
             </tr>
           </thead>
           <tbody>
@@ -167,13 +211,15 @@ export function BenchmarkCard({ rows }) {
                 <td>{aspectLabel(r.aspect)}</td>
                 <td className="stat">{pct(r.store_pct)}</td>
                 <td className="stat">{pct(r.baseline_pct)}</td>
-                <td
-                  className="stat"
-                  style={{ color: r.gap > 0 ? "var(--red-ink)" : "var(--green-ink)" }}
-                >
-                  {r.gap > 0 ? "+" : ""}
-                  {pct(r.gap)}
-                </td>
+                {!awal && (
+                  <td
+                    className="stat"
+                    style={{ color: r.gap > 0 ? "var(--red-ink)" : "var(--green-ink)" }}
+                  >
+                    {r.gap > 0 ? "+" : ""}
+                    {pct(r.gap)}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -181,8 +227,9 @@ export function BenchmarkCard({ rows }) {
       </div>
       <p className="meta" style={{ marginTop: 8 }}>
         Dari <span className="stat">{rows[0].baseline_sample_size}</span> ulasan pembanding ·
-        keyakinan {rows[0].confidence_level} · margin ±
-        <span className="stat">{pct(rows[0].margin_of_error)}</span>
+        keyakinan {rows[0].confidence_level} · margin pembanding ±
+        <span className="stat">{pct(rows[0].margin_of_error)}</span> · margin toko Anda ±
+        <span className="stat">{pct(rows[0].store_margin_of_error)}</span>
       </p>
     </section>
   );
@@ -302,6 +349,64 @@ export function OpportunityCard({ opportunity: o }) {
   );
 }
 
+/** L4 - ulasan yang teks dan fotonya menunjuk arah berlawanan.
+ *
+ * Bentuknya menaruh kedua bukti BERDAMPINGAN dan tidak memutuskan siapa yang benar. Itu bukan
+ * kehati-hatian berlebihan: sistem memang tidak tahu apakah pembelinya sungkan menulis
+ * keluhan, salah unggah foto, atau memfoto barang lain. Yang diketahuinya cuma bahwa keduanya
+ * tidak cocok - dan itu saja sudah cukup untuk meminta satu menit perhatian manusia.
+ *
+ * Nilainya justru dari kelangkaan sinyalnya. Ulasan bintang lima bertuliskan "barangnya
+ * bagus!" dengan foto barang penyok terhitung sebagai kepuasan di setiap dashboard yang ada di
+ * pasar, karena semuanya buta foto. Masalah nyatanya tidak pernah muncul di angka mana pun.
+ */
+export function ContradictionCard({ finding: f }) {
+  return (
+    <article className="acard acard--sedang kontra">
+      <span className="badge badge--sedang">Perlu dicek sendiri</span>
+      <h4>Foto membantah teksnya</h4>
+      <p>{f.display_note}</p>
+
+      <div className="kontra__pasangan">
+        <div className="kontra__sisi">
+          <div className="kontra__label">Kata teksnya</div>
+          <EvidenceStrip
+            citation={{
+              citation_id: `k-${f.review_id}`,
+              review_id: f.review_id,
+              quote: f.quote,
+              rating: f.rating,
+            }}
+          />
+        </div>
+        <div className="kontra__sisi">
+          <div className="kontra__label">Kata fotonya</div>
+          <div className="kontra__visual">
+            <b>{VISUAL_LABEL[f.visual.label] ?? f.visual.label}</b>
+            <span className="meta">
+              keyakinan <span className="stat">{pct(f.visual.confidence)}</span> ·{" "}
+              {f.visual.model_version}
+            </span>
+            {/* Foto aslinya sengaja tidak ditampilkan ulang: gambar tidak pernah menyimpan
+                di server, dan menampilkannya kembali menuntut penyimpanan sesi yang justru
+                dihindari seluruh produk ini. Yang ditunjukkan adalah bacaannya. */}
+            <p className="meta">
+              Foto ini tidak disimpan di server, jadi tidak dapat ditampilkan ulang di sini.
+              Buka ulasan <span className="stat">{f.review_id}</span> di marketplace Anda untuk
+              melihatnya.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className="meta">
+        Sistem tidak menyimpulkan mana yang benar. Keduanya ditampilkan apa adanya supaya Anda
+        yang memutuskan.
+      </p>
+    </article>
+  );
+}
+
 /** VIS-02 - temuan foto, termasuk yang abstain.
  *
  * Backend hanya mengisi `findings` bila model visual lolos gerbang go/no-go. Selama belum,
@@ -348,9 +453,17 @@ export function VisualFindings({ findings }) {
  *  `dialog` dipakai, bukan div bertumpuk, karena ia sudah membawa jebakan fokus, penutupan
  *  dengan Esc, dan lapisan teratas yang tidak bisa terpotong oleh `overflow` induk mana pun.
  */
-export function EvidenceDialog({ card, decision, onDecide, onClose }) {
+export function EvidenceDialog({ card, section, analysisId, decision, onDecide, onClose }) {
   const ref = useRef(null);
   const headingRef = useRef(null);
+
+  // Bagian mana yang terbuka. Disetel dari pintu yang ditekan pengguna di kartu, dan disetel
+  // ULANG tiap kali kartu atau pintunya berganti - tanpa itu, membuka "draf balasan" pada
+  // kartu kedua akan menampilkan bagian yang kebetulan terbuka terakhir kali.
+  const [buka, setBuka] = useState(section ?? "bukti");
+  useEffect(() => {
+    setBuka(section ?? "bukti");
+  }, [card?.action_id, section]);
 
   // `onClose` biasanya ditulis sebagai arrow inline di pemanggilnya, sehingga identitasnya
   // berubah pada SETIAP render induk. Kalau ia ikut menjadi dependensi efek di bawah, efek itu
@@ -406,19 +519,50 @@ export function EvidenceDialog({ card, decision, onDecide, onClose }) {
           </button>
         </div>
 
-        {card.evidence_quotes.length === 0 ? (
-          <div className="banner-grey">
-            Data belum cukup untuk menampilkan kutipan pendukung pada topik ini.
-          </div>
-        ) : (
-          <div className="sheet__quotes">
-            {card.evidence_quotes.map((c) => (
-              <EvidenceStrip key={c.citation_id} citation={c} tag={card.aspect_label} />
-            ))}
-          </div>
-        )}
+        {/* Tiga bagian, satu terbuka pada satu waktu. Akordeon, bukan tiga panel bertumpuk:
+            jejak perhitungan sendiri sepanjang satu layar penuh, dan menaruhnya terbuka di
+            bawah bukti membuat tombol keputusan di kaki lembar berada di luar jangkauan
+            gulir bagi orang yang cuma ingin menekan "Terima". */}
+        <div className="tabs tabs--block" role="tablist" aria-label="Isi lembar">
+          {[
+            ["bukti", `Bukti (${card.evidence_quotes.length})`],
+            ["balasan", "Draf balasan"],
+            ["jejak", "Jejak perhitungan"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={buka === id}
+              className={`tab ${buka === id ? "tab--active" : ""}`}
+              onClick={() => setBuka(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {card.visual_evidence && (
+        {buka === "bukti" &&
+          (card.evidence_quotes.length === 0 ? (
+            <div className="banner-grey">
+              Data belum cukup untuk menampilkan kutipan pendukung pada topik ini.
+            </div>
+          ) : (
+            <div className="sheet__quotes">
+              {card.evidence_quotes.map((c) => (
+                <EvidenceStrip key={c.citation_id} citation={c} tag={card.aspect_label} />
+              ))}
+            </div>
+          ))}
+
+        {/* Keduanya dipasang-lepas mengikuti bagian yang terbuka, bukan disembunyikan dengan
+            CSS: yang menempel pada pemasangannya adalah permintaan jaringannya, dan panel
+            yang tidak pernah dibuka tidak boleh menembak permintaan apa pun. */}
+        {buka === "balasan" && (
+          <ReplyDrafts analysisId={analysisId} card={card} aktif />
+        )}
+        {buka === "jejak" && <TracePanel analysisId={analysisId} card={card} aktif />}
+
+        {buka === "bukti" && card.visual_evidence && (
           <div className="banner-grey" style={{ marginTop: 12 }}>
             {card.visual_evidence.abstain ? (
               <>
@@ -437,10 +581,15 @@ export function EvidenceDialog({ card, decision, onDecide, onClose }) {
           </div>
         )}
 
-        <div className="reason-box">
-          <h5>Kenapa ini diprioritaskan</h5>
-          <Narrative text={card.priority_reasoning} className="body" />
-        </div>
+        {/* Ringkasan alasan disembunyikan saat jejaknya terbuka: ia adalah versi kalimat dari
+            langkah 3 dan 4 di panel itu, dan menaruh keduanya berdampingan membuat pembaca
+            mencari-cari perbedaannya, padahal tidak ada. */}
+        {buka !== "jejak" && (
+          <div className="reason-box">
+            <h5>Kenapa ini diprioritaskan</h5>
+            <Narrative text={card.priority_reasoning} className="body" />
+          </div>
+        )}
 
         <div className="banner-grey" style={{ marginTop: 12 }}>
           Risiko bila keliru: {card.risk_if_recommendation_wrong}

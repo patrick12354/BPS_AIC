@@ -419,3 +419,109 @@ dijalankan apa adanya.
 Batas kesimpulan: 97 foto dari dua produk fesyen satu penjual. NO-GO berlaku untuk kondisi
 itu, bukan pernyataan bahwa CLIP tidak dapat dipakai. Encoder lain, prompt lain, atau kategori
 produk lain dapat memberi hasil berbeda - dan mengujinya adalah pekerjaan Tier 2.
+
+---
+
+## 9. Kalibrasi keyakinan - temperature scaling (L1)
+
+**Status: pipeline siap, angka menunggu checkpoint.** Kode kalibrasi lengkap dan diuji; yang
+belum ada adalah hasil menjalankannya, karena itu menuntut `models/indobert-nlp01/model.pt`
+beserta `data/processed/clauses_val.csv` yang tidak ikut di-commit.
+
+```bash
+python ml/text/calibrate.py     # menulis suhu ke bundle + ml/evaluation/calibration.json
+```
+
+### Masalah yang diselesaikan
+
+`AspectPrediction.confidence` selama ini **konstanta**: 0,80 saat checkpoint aktif, 0,60 saat
+leksikon. Ia dipasang sebagai penanda sementara pada Fase 5 dan tidak pernah diganti. Angka itu
+sempat tampil di laporan sebagai "Keyakinan model: 80% rata-rata", bersebelahan dengan
+persentase yang benar-benar dihitung - di tempat seperti itu ia terbaca sebagai hasil
+pengukuran, dan satu angka tetap yang menyamar sebagai pengukuran merusak kepercayaan pada
+seluruh angka di sekitarnya.
+
+Softmax mentah bukan penggantinya. Temuan Fase 8 mengukur kenapa: dari 128 ulasan negatif yang
+terlewat pada PRDECT-ID, **113 (88,3%) diprediksi dengan P(negatif) di bawah 0,10**, median
+0,0006. Model bukan ragu lalu memilih salah - **ia yakin dan salah**. Angka seyakin itu tidak
+boleh sampai ke layar tanpa diperiksa lebih dulu seberapa sering ia benar.
+
+### Metode dan alasannya
+
+Temperature scaling (Guo et al., 2017): satu parameter `T` per head, di-fit pada split validasi
+dengan NLL, ECE dilaporkan sebelum dan sesudah.
+
+Dipilih di atas isotonic regression dan Platt scaling per kelas karena satu sifat yang
+menentukan: **membagi logit dengan skalar positif tidak menggeser argmax**. Akurasi, macro-F1,
+dan urutan Action Card karenanya tetap sama persis - yang berubah hanya kejujuran angka
+keyakinannya. Metode yang lebih lentur mengubah keputusan, dan itu menuntut evaluasi ulang
+penuh untuk sesuatu yang bukan tujuannya.
+
+NLL dipakai sebagai fungsi objektif meski ECE yang dilaporkan: ECE adalah fungsi tangga -
+berubah hanya ketika sebuah contoh berpindah bin - sehingga permukaannya datar di hampir semua
+tempat. NLL mulus dan proper, mengarah ke tempat yang sama tanpa dataran itu.
+
+Pencariannya bagi-tiga (ternary search) atas rentang [0,05; 10], bukan gradient descent. Fungsi
+satu dimensi yang unimodal terhadap T tidak membutuhkan laju belajar maupun titik awal, dan
+hasilnya **deterministik** - syarat yang berlaku untuk setiap angka di produk ini.
+
+### Apa yang berubah pada produk
+
+Ambang aspek ikut digeser bersama suhunya (`aspect_threshold_calibrated`), sehingga keputusan
+biner "aspek ini disebut atau tidak" tetap identik dengan sebelum kalibrasi. Tanpa penggeseran
+itu, kalibrasi yang seharusnya hanya menyentuh angka keyakinan akan diam-diam mengubah aspek
+mana yang terdeteksi.
+
+Antarmuka menampilkan angka keyakinan **hanya bila `AnalysisResult.confidence_calibrated`
+bernilai true**, dan medan itu dibaca dari isi bundle - bukan dari saklar konfigurasi. Sebuah
+checkpoint yang belum dikalibrasi tidak dapat "dianggap" terkalibrasi karena seseorang lupa
+mematikan sesuatu.
+
+`ml/text/calibrate.py` **menolak menulis suhu** bila akurasi sebelum dan sesudah berbeda. Itu
+tidak mungkin terjadi secara matematis untuk suhu positif - jadi kalau terjadi, yang ada adalah
+bug, dan seluruh evaluasi yang sudah dilaporkan ikut tidak berlaku.
+
+---
+
+## 10. Aturan agregasi klausa menjadi dokumen (L2)
+
+**Status: aturan diganti, angka menunggu checkpoint.**
+
+Model bekerja pada **klausa**; dataset berlabel manusia memberi label pada **dokumen**.
+Jembatan di antaranya adalah aturan keputusan - dan aturan itu pilihan produk, bukan detail
+teknis evaluasi.
+
+### Temuan: skrip evaluasi mengukur sistem yang tidak dikirimkan
+
+Sampai audit ini, `evaluate_external.py` dan `tune_sentiment_threshold.py` memakai **suara
+terbanyak** klausa, dan keduanya menuliskannya sendiri-sendiri. Backend memakai aturan yang
+sama sekali berbeda: satu klausa negatif ber-aspek sudah cukup untuk menghitung ulasan sebagai
+berkeluhan (`tools/segments.py`, `services/analyze.py`).
+
+Akibatnya macro-F1 yang dilaporkan menggambarkan sistem yang tidak pernah sampai ke pengguna.
+
+### Perubahan
+
+Aturannya dipindahkan ke satu sumber, `ml/text/aggregate.py`, dan aturan produksinya menjadi
+**asimetris**: satu klausa dengan P(negatif) ≥ 0,5 menegatifkan dokumen, berapa pun jumlah
+klausa positif di sekitarnya. Sisi lain tidak disentuh.
+
+Asimetrinya disengaja. Keluhan yang terlewat berarti pemilik toko tidak pernah tahu ada
+masalah; pujian yang terlewat berarti satu baris kurang di daftar peluang. Aturan yang
+memperlakukan keduanya setara salah menimbang sejak awal.
+
+Ambang 0,5 bukan pilihan selera: pada tiga kelas, probabilitas ≥ 0,5 pasti argmax-nya. Aturan
+ini karenanya tidak pernah "menyelamatkan" klausa yang modelnya sendiri ragu - ia berhenti
+menenggelamkan klausa yang modelnya SUDAH yakin. Temuan Fase 8 menunjukkan tidak ada yang bisa
+dipungut di bawah itu: 113 dari 128 yang terlewat berada di bawah P(negatif) 0,10.
+
+### Kedua aturan dilaporkan berdampingan
+
+`evaluate_external.py` sekarang menghitung **keduanya** dari satu kali inferensi, dan mencetak
+recall kelas negatif secara terpisah dari macro-F1.
+
+Aturan asimetris **pasti** menaikkan recall negatif dan **pasti** menurunkan presisinya; yang
+tidak diketahui adalah besarannya. Mengganti diam-diam berarti mengklaim perbaikan tanpa
+mengukurnya - persis kesalahan yang sudah tercatat sekali di LIMITATIONS (penyetelan ambang
+Fase 8, yang "perbaikannya" ternyata berada dalam derau). Angka pertukaran itu diisi di sini
+setelah dijalankan pada checkpoint.

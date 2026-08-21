@@ -35,6 +35,7 @@ import pandas as pd
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "ml" / "text"))
 
+from aggregate import by_asymmetric, by_majority  # noqa: E402
 from preprocess import normalize, split_clauses  # noqa: E402
 
 CHECKPOINT = REPO / "models" / "indobert-nlp01" / "model.pt"
@@ -115,18 +116,21 @@ def clause_probs(texts: list[str]) -> list[np.ndarray]:
     return out
 
 
-def decide(probs: np.ndarray, tau: float) -> str:
+def decide(probs: np.ndarray, tau: float, rule: str = "mayoritas_klausa") -> str:
     """Agregasi dokumen dari klausa, dengan ambang khusus kelas negatif.
 
-    Aturan mayoritasnya sama dengan evaluate_external.py - klausa non-netral menang atas
-    netral - supaya yang berubah hanya ambangnya, bukan cara agregasinya sekaligus.
+    Aturan agregasinya diambil dari `aggregate.py`, sumber yang sama dengan
+    `evaluate_external.py` dan dengan backend - sebelumnya ditulis ulang di sini dan diam-diam
+    menyimpang. `rule` dibiarkan default ke aturan lama supaya pencarian ambang ini tetap
+    membandingkan hal yang sama dengan yang dulu dicarinya; pertukaran antar-aturan diukur di
+    `evaluate_external.py`, bukan di sini.
     """
     votes = []
     for row in probs:
         votes.append("negatif" if row[NEG] >= tau else SENTIMENTS[int(row.argmax())])
-    non_neutral = [v for v in votes if v != "netral"]
-    pool = non_neutral or votes
-    return max(set(pool), key=pool.count)
+    if rule == "asimetris_negatif":
+        return by_asymmetric(votes, [float(row[NEG]) for row in probs], threshold=tau)
+    return by_majority(votes)
 
 
 def macro_f1(gold: list[str], pred: list[str], classes: list[str]) -> tuple[float, dict]:

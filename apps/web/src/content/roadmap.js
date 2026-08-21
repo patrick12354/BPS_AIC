@@ -25,7 +25,7 @@ export const ROADMAP = [
     title: "Kesimpulan otomatis dari foto ulasan",
     status: "Diuji, belum lolos",
     body:
-      "Foto yang Anda unggah sudah bisa dibaca teksnya, tetapi menyimpulkan kondisi barang dari gambarnya belum. Pengujian pada 97 foto ulasan asli menempatkan model di bawah tebakan sepele, dan 61% foto yang sebenarnya normal salah ditandai bermasalah. Menyalakannya sekarang berarti mengirim Anda memeriksa barang yang tidak apa-apa.",
+      "Foto yang Anda unggah sudah bisa dibaca teksnya, tetapi menyimpulkan kondisi barang dari gambarnya belum. Pengujian pada 97 foto ulasan asli menempatkan model di bawah tebakan sepele, dan 61% foto yang sebenarnya normal salah ditandai bermasalah. Menyalakannya sekarang berarti mengirim Anda memeriksa barang yang tidak apa-apa. Batas itu kini dijaga kode, bukan ingatan: sistem menolak menyalakan jalur foto selama pengujiannya belum lolos, siapa pun yang mencoba.",
   },
   {
     id: "kontradiksi",
@@ -38,11 +38,19 @@ export const ROADMAP = [
   },
   {
     id: "riwayat",
-    stage: "antre",
-    title: "Riwayat antar-sesi dan tren antar-periode",
-    status: "Belum dibangun",
+    stage: "aktif",
+    title: "Riwayat antar-sesi",
+    status: "Ada, dengan cara yang berbeda",
     body:
-      "Sekarang setiap sesi dimulai dari nol dan tidak ada yang disimpan setelah Anda menutup halaman. Konsekuensinya, perubahan antar-bulan hanya terhitung bila berkas Anda sendiri memuat kolom tanggal.",
+      "Kami tetap tidak menyimpan apa pun di server. Gantinya, halaman hasil punya tombol unduh arsip - sekeping berkas berisi angka saja, tanpa teks ulasan - yang bisa Anda unggah kembali bulan depan untuk melihat apa yang berubah. Arsipnya milik Anda dan ada di komputer Anda; kalau hilang, riwayatnya ikut hilang, dan itu memang konsekuensi dari tidak menyimpan apa pun.",
+  },
+  {
+    id: "kalibrasi",
+    stage: "menunggu",
+    title: "Angka keyakinan model yang benar-benar terukur",
+    status: "Alatnya siap, angkanya belum",
+    body:
+      "Laporan sempat menampilkan “keyakinan model 80%”. Angka itu tidak pernah diukur - ia nilai tetap yang dipasang sementara, dan sama saja untuk semua aspek. Ia dicabut dari layar alih-alih dibiarkan, karena angka tetap yang berdiri di antara angka-angka hasil hitungan akan terbaca sebagai hasil hitungan juga. Penggantinya sudah dibangun dan tinggal dijalankan pada data uji terpisah; angkanya kembali ke layar dengan sendirinya begitu benar-benar terukur, tanpa ada yang perlu menyalakannya.",
   },
   {
     id: "multitoko",

@@ -118,7 +118,12 @@ def calculate_priority_score(
     confidence_norm = aggregate.avg_confidence
     recency_norm = TREND_NORM[aggregate.trend]
     benchmark_gap_norm = 0.0
-    if benchmark is not None:
+    # `preliminary` berarti selisihnya tidak dapat dibedakan dari nol pada data sekecil ini.
+    # Selisih yang tidak layak DITAMPILKAN juga tidak layak MENAIKKAN prioritas - kalau
+    # dibiarkan, angka yang sengaja disembunyikan dari layar tetap bekerja diam-diam di
+    # belakang urutan kartu, dan itu bentuk ketidakjujuran yang lebih buruk daripada
+    # menampilkannya.
+    if benchmark is not None and not benchmark.preliminary:
         benchmark_gap_norm = max(0.0, min(benchmark.gap / BENCHMARK_GAP_SCALE, 1.0))
 
     core = frequency_norm * severity_norm * confidence_norm
@@ -150,7 +155,7 @@ def calculate_priority_score(
     ]
     if aggregate.trend == Trend.MENINGKAT:
         parts.append("dan tren keluhannya meningkat dalam 30 hari terakhir")
-    if benchmark is not None and benchmark.gap > 0:
+    if benchmark is not None and benchmark.gap > 0 and not benchmark.preliminary:
         parts.append(
             f"serta {benchmark.gap:.0%} poin di atas baseline kategori "
             f"(n={benchmark.baseline_sample_size})"

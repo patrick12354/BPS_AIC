@@ -215,7 +215,9 @@ def build_action_card(
     }
 
     action_text = template["action"].format(**fields) + TREND_PHRASE[aggregate.trend]
-    if benchmark is not None and benchmark.gap > 0:
+    # Perbandingan yang masih berstatus indikasi awal tidak disebut di kalimat rekomendasi.
+    # Kalimat itu dibaca sebagai fakta, dan pada data sekecil itu selisihnya belum fakta.
+    if benchmark is not None and benchmark.gap > 0 and not benchmark.preliminary:
         action_text += (
             f" Angka ini {benchmark.gap:.0%} poin di atas rata-rata kategori sejenis "
             f"(dari {benchmark.baseline_sample_size} ulasan pembanding)."

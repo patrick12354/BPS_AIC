@@ -46,7 +46,9 @@ function Tren({ trend }) {
 }
 
 /** Satu aspek yang punya sebutan di dalam data. */
-function BarisAspek({ agg, total, benchmark, kartu, seri, buckets, terbuka, onToggle }) {
+function BarisAspek({
+  agg, total, benchmark, kartu, seri, buckets, terkalibrasi, terbuka, onToggle,
+}) {
   const porsi = total ? agg.total_mentions / total : 0;
   const negatif = total ? agg.negative_count / total : 0;
 
@@ -114,19 +116,40 @@ function BarisAspek({ agg, total, benchmark, kartu, seri, buckets, terbuka, onTo
                 <dd>
                   <span className="stat">{pct(benchmark.store_pct)}</span> vs{" "}
                   <span className="stat">{pct(benchmark.baseline_pct)}</span>{" "}
-                  <em className={benchmark.gap > 0 ? "gap gap--buruk" : "gap gap--baik"}>
-                    {benchmark.gap > 0 ? "+" : ""}
-                    {pct(benchmark.gap)}
-                  </em>
+                  {/* Selisihnya ditahan pada data tipis dengan alasan yang sama seperti di
+                      tabel benchmark: margin sisi toko lebih lebar daripada selisih yang mau
+                      ditunjukkan, jadi tandanya sendiri bisa terbalik. Lihat BenchmarkCard. */}
+                  {benchmark.preliminary ? (
+                    <em className="gap">indikasi awal</em>
+                  ) : (
+                    <em className={benchmark.gap > 0 ? "gap gap--buruk" : "gap gap--baik"}>
+                      {benchmark.gap > 0 ? "+" : ""}
+                      {pct(benchmark.gap)}
+                    </em>
+                  )}
                 </dd>
               </div>
             )}
-            <div>
-              <dt>Keyakinan model</dt>
-              <dd>
-                <span className="stat">{pct(agg.avg_confidence)}</span> rata-rata
-              </dd>
-            </div>
+            {/* Keyakinan model tampil HANYA bila checkpoint-nya sudah dikalibrasi.
+                
+                Sebelum kalibrasi, angkanya adalah penanda tetap (0,80 saat checkpoint aktif,
+                0,60 saat leksikon) yang tidak pernah berubah antar aspek. Ditampilkan
+                berdampingan dengan angka yang benar-benar dihitung, ia terbaca sebagai hasil
+                pengukuran - dan itu satu-satunya angka di seluruh laporan yang tidak diukur.
+                
+                Sesudah kalibrasi (temperature scaling, ml/text/calibrate.py) ia menjadi
+                probabilitas sungguhan dengan galat kalibrasi yang dilaporkan di MODEL_CARD,
+                dan tidak ada lagi alasan menahannya. Saklarnya datang dari backend, bukan
+                dari tebakan sisi klien: hanya sisi yang membaca isi checkpoint yang tahu. */}
+            {terkalibrasi && (
+              <div>
+                <dt>Keyakinan model</dt>
+                <dd>
+                  <span className="stat">{pct(agg.avg_confidence)}</span> rata-rata,
+                  terkalibrasi
+                </dd>
+              </div>
+            )}
           </dl>
 
           {/* Kutipan diambil dari Action Card aspek yang sama - satu-satunya tempat bukti
@@ -184,6 +207,7 @@ export function AspectSections({ result, category }) {
       agg={agg}
       total={total}
       benchmark={benchmarks[agg.aspect]}
+      terkalibrasi={Boolean(result.confidence_calibrated)}
       kartu={kartuPerAspek[agg.aspect]}
       seri={seriPerAspek[agg.aspect]}
       buckets={buckets}

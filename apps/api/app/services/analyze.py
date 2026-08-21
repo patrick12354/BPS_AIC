@@ -20,11 +20,17 @@ from datetime import datetime
 from ..schemas import (
     AnalysisMode,
     QnAResponse,
+    ActionTrace,
+    AnalysisArchive,
+    ArchiveComparison,
     AnalysisResult,
     AnalysisSummary,
     Category,
     CategoryGuess,
+    ContradictionFinding,
     RawReview,
+    ReplyDraftResponse,
+    Sentiment,
 )
 from ..tools import (
     EvidenceIndex,
@@ -32,10 +38,14 @@ from ..tools import (
     QnAStore,
     answer_question,
     build_action_card,
+    build_action_trace,
+    build_archive,
+    build_reply_drafts,
     build_period_history,
     build_rating_breakdown,
     calculate_aspect_statistics,
     calculate_priority_score,
+    compare_archives,
     compare_category_baseline,
     detect_category,
     find_opportunities,
@@ -55,11 +65,23 @@ class AnalyzeService:
 
     def __init__(
         self, text_adapter, embedding_adapter=None, orchestrator=None, baseline=None,
-        min_similarity: float | None = None,
+        min_similarity: float | None = None, vision_adapter=None, image_source=None,
     ):
         self.text_adapter = text_adapter
         self.embedding_adapter = embedding_adapter
         self.orchestrator = orchestrator
+        # Jalur visual (L3/L4). Keduanya opsional dan keduanya bernilai None hari ini.
+        #
+        # `image_source` adalah cantelan yang mengubah daftar ProcessedReview menjadi daftar
+        # (image_ref, review_id, byte). Ia belum punya isi karena BELUM ADA JALAN MASUK bagi
+        # foto produk ke dalam analisis - `/ocr` menerima gambar tetapi hanya membaca teksnya,
+        # dan `RawReview.image_paths` berisi path yang hanya berarti di mesin klien.
+        #
+        # Cantelannya tetap dipasang, dan itu bukan kode mati yang optimistis: ia yang membuat
+        # sisa jalur visual - adapter, fusion, kartu kontradiksi - dapat diuji sekarang dengan
+        # sumber tiruan, alih-alih menunggu satu fitur unggah yang belum boleh dibangun.
+        self.vision_adapter = vision_adapter
+        self.image_source = image_source
         self.baseline = baseline if baseline is not None else load_baseline()
         # Ambang relevansi bukti dapat dikonfigurasi (configs/config.yaml retrieval.min_similarity)
         # karena nilainya bergantung model embedding yang dipakai - ambang yang cocok untuk
@@ -80,6 +102,137 @@ class AnalyzeService:
                 ),
             )
         return answer_question(context, question)
+
+    # ----------------------------------------------------------------------------------
+    # Permintaan lanjutan atas satu analisis
+    # ----------------------------------------------------------------------------------
+    # Keduanya membaca dari konteks sesi yang sama dengan Q&A, dan keduanya mengembalikan
+    # None saat analisisnya sudah kedaluwarsa. Tidak ada jalan menghitung ulang: `predictions`
+    # dan indeks bukti hidup selama request analisis saja, sesuai janji sesi sekali-pakai
+    # (ADR-010). Yang benar dilakukan adalah mengatakannya, bukan memulihkannya diam-diam.
+
+    def trace_for(self, analysis_id: str, action_id: str) -> ActionTrace | None:
+        """Rantai perhitungan satu kartu - fitur S2 ("Bagaimana angka ini dihitung?")."""
+        context = self.qna_store.get(analysis_id)
+        if context is None:
+            return None
+        return context.traces.get(action_id)
+
+    def archive_for(self, analysis_id: str) -> AnalysisArchive | None:
+        """Ringkasan agregat yang aman dibawa keluar sesi - fitur L5.
+
+        Disusun dari konteks sesi, bukan dari `AnalysisResult` yang sudah dikirim: hasil itu
+        milik klien dan boleh berbeda dari yang dipegang server (pengguna dapat mengganti
+        kategori pembanding di layar hasil). Arsip harus menggambarkan analisis yang benar-benar
+        dijalankan.
+        """
+        context = self.qna_store.get(analysis_id)
+        if context is None:
+            return None
+        return build_archive(
+            analysis_id=analysis_id,
+            aggregates=context.aggregates,
+            total_reviews=context.total_reviews,
+            reviews_with_complaint=context.reviews_with_complaint or 0,
+            category=context.category,
+            period_start=context.period_start,
+            period_end=context.period_end,
+            model_versions={
+                "text": self.text_adapter.model_version,
+                "embedding": getattr(self.embedding_adapter, "model_name", "tidak aktif"),
+            },
+            confidence_calibrated=bool(getattr(self.text_adapter, "calibrated", False)),
+        )
+
+    def compare_with_archive(
+        self, analysis_id: str, previous: AnalysisArchive
+    ) -> ArchiveComparison | None:
+        """Selisih antar-periode terhadap arsip yang diunggah pengguna - fitur L5."""
+        current = self.archive_for(analysis_id)
+        if current is None:
+            return None
+        return compare_archives(previous, current)
+
+    def reply_drafts(self, analysis_id: str, action_id: str) -> ReplyDraftResponse | None:
+        """Draf balasan untuk seluruh ulasan pendukung satu kartu - fitur S1."""
+        context = self.qna_store.get(analysis_id)
+        if context is None:
+            return None
+        card = next((c for c in context.actions if c.action_id == action_id), None)
+        if card is None:
+            return None
+
+        clauses = {
+            review_id: clause
+            for (review_id, aspect), clause in context.negative_clauses.items()
+            if aspect == card.aspect.value
+        }
+        drafts = build_reply_drafts(card, clauses_by_review=clauses)
+        return ReplyDraftResponse(
+            action_id=card.action_id,
+            aspect=card.aspect,
+            drafts=drafts,
+            note=(
+                "Draf, bukan balasan jadi. Sunting dulu sebelum dikirim - sistem tidak tahu "
+                "apa yang sudah Anda janjikan lewat chat, dan tidak pernah menuliskan "
+                "keputusan ganti barang atau refund untuk Anda."
+            ),
+        )
+
+    def _classify_images(self, reviews) -> list:
+        """Prediksi visual untuk foto yang dibawa ulasan sesi ini - kosong bila jalurnya mati.
+
+        Kegagalan di sini TIDAK PERNAH menghentikan analisis (bagian 20, ADR-014): jalur visual
+        adalah lapisan tambahan di atas jalur teks, dan teks berdiri sendiri. Yang terjadi saat
+        ia gagal adalah hasil teks-saja, persis seperti saat memang tidak ada foto.
+        """
+        adapter = self.vision_adapter
+        if adapter is None or not getattr(adapter, "active", False):
+            return []
+        gambar = self.image_source(reviews) if self.image_source else []
+        if not gambar:
+            return []
+        try:
+            return adapter.classify(gambar)
+        except Exception:  # pragma: no cover - jalur degradasi
+            return []
+
+    def _contradiction_findings(self, fused, reviews, visual_predictions) -> list:
+        """Susun temuan L4: ulasan yang teks dan fotonya berlawanan arah.
+
+        Kedua bukti dibawa berdampingan dan tidak ada yang dinyatakan menang. Sistem tidak tahu
+        apakah pembelinya sungkan menulis keluhan, salah unggah foto, atau memfoto barang lain -
+        yang diketahuinya cuma bahwa keduanya tidak cocok (bagian 20.3).
+        """
+        if not visual_predictions:
+            return []
+
+        teks_by_review = {r.review_id: r for r in reviews}
+        visual_by_review: dict[str, list] = {}
+        for v in visual_predictions:
+            visual_by_review.setdefault(v.review_id, []).append(v)
+
+        temuan: list[ContradictionFinding] = []
+        for f in fused:
+            if not f.contradiction_flag:
+                continue
+            review = teks_by_review.get(f.review_id)
+            kandidat = [v for v in visual_by_review.get(f.review_id, []) if not v.abstain]
+            if review is None or not kandidat:
+                continue
+            temuan.append(
+                ContradictionFinding(
+                    review_id=f.review_id,
+                    # Teks yang SUDAH diredaksi, sama dengan yang dipakai indeks bukti.
+                    quote=review.clean_text,
+                    rating=review.rating,
+                    text_says_problem="menyebut ada masalah" in (f.display_note or ""),
+                    visual=max(kandidat, key=lambda v: v.confidence),
+                    display_note=f.display_note or "",
+                    combined_confidence=f.combined_confidence,
+                )
+            )
+        return temuan
 
     def _dominant_category(self, reviews) -> Category:
         if not reviews:
@@ -133,6 +286,12 @@ class AnalyzeService:
             ]
             for p in predictions
         }
+        positive_by_review = {
+            p.review_id: [
+                item.aspect.value for item in p.predictions if item.sentiment.value == "positif"
+            ]
+            for p in predictions
+        }
         index = (
             EvidenceIndex(self.embedding_adapter, min_similarity=self.min_similarity)
             if self.min_similarity is not None
@@ -144,6 +303,7 @@ class AnalyzeService:
                 "text": r.clean_text,
                 "aspects": aspects_by_review.get(r.review_id, []),
                 "negative_aspects": negative_by_review.get(r.review_id, []),
+                "positive_aspects": positive_by_review.get(r.review_id, []),
                 "rating": r.rating,
                 "timestamp": r.timestamp,
             }
@@ -169,7 +329,12 @@ class AnalyzeService:
                 pass  # jatuh ke template; mode sudah ditandai FALLBACK oleh pemanggil
         return base
 
-    def analyze(self, raw_reviews: list[RawReview], now: datetime | None = None) -> AnalysisResult:
+    def analyze(
+        self,
+        raw_reviews: list[RawReview],
+        now: datetime | None = None,
+        trace: bool = False,
+    ) -> AnalysisResult:
         pre = preprocess_reviews(raw_reviews, now=now)
         reviews = pre.reviews
         warnings = list(pre.warnings)
@@ -188,8 +353,12 @@ class AnalyzeService:
 
         predictions = self.text_adapter.classify(reviews)
 
-        # Jalur visual dilewati bila tidak ada foto - ini keadaan normal, bukan error.
-        visual_predictions: list = []
+        # Jalur visual dilewati bila tidak ada foto ATAU adapter visualnya nonaktif - keduanya
+        # keadaan normal, bukan error. Nonaktif hari ini adalah keadaan yang benar: gerbang
+        # go/no-go modul visual belum lolos, dan `VisionModelAdapter` menolak menyala sendiri
+        # (lihat adapters/vision_model.py). Selama itu, `contradictions` di bawah selalu kosong
+        # dan bagiannya tidak dirender - lebih baik tidak ada daripada ada tetapi menebak.
+        visual_predictions: list = self._classify_images(reviews)
         fused = fuse_all(predictions, visual_predictions)
         contradictions = [f for f in fused if f.contradiction_flag]
 
@@ -214,6 +383,7 @@ class AnalyzeService:
 
         mode = AnalysisMode.FULL if self.orchestrator is not None else AnalysisMode.FALLBACK
         cards = []
+        traces: dict[str, ActionTrace] = {}
         for rank, (aggregate, priority) in enumerate(scored[:MAX_ACTION_CARDS], start=1):
             evidence = []
             if index is not None:
@@ -223,9 +393,10 @@ class AnalyzeService:
                     top_k=EVIDENCE_PER_CARD,
                     negative_only=True,  # kartu keluhan wajib dibuktikan kutipan keluhan
                 )
+            action_id = f"ACT-{rank:03d}"
             cards.append(
                 build_action_card(
-                    action_id=f"ACT-{rank:03d}",
+                    action_id=action_id,
                     aggregate=aggregate,
                     priority=priority,
                     total_reviews=len(reviews),
@@ -234,6 +405,21 @@ class AnalyzeService:
                     contradictions=contradictions,
                 )
             )
+            # Jejak dibangun SEKARANG, bukan saat diminta. `predictions` hidup selama request
+            # ini saja; menyusunnya belakangan berarti menjalankan inferensi kedua atas data
+            # yang sudah dilepas - beberapa puluh detik untuk menjawab satu klik "bagaimana
+            # angka ini dihitung?". Ongkosnya di sini murni aritmetika atas objek yang sudah
+            # ada di memori.
+            traces[action_id] = build_action_trace(
+                action_id=action_id,
+                aspect=aggregate.aspect,
+                aggregate=aggregate,
+                priority=priority,
+                predictions=predictions,
+                total_reviews=len(reviews),
+                citations=evidence,
+                calibrated=bool(getattr(self.text_adapter, "calibrated", False)),
+            )
 
         # OPP-01 - aspek yang justru dipuji, disajikan sebagai sinyal untuk materi promosi.
         positive_evidence = {}
@@ -241,7 +427,9 @@ class AnalyzeService:
             for agg in aggregates:
                 if agg.positive_count >= 5:
                     positive_evidence[agg.aspect] = index.retrieve(
-                        query=agg.aspect.value.replace("_", " "), aspect=agg.aspect, top_k=2
+                        query=agg.aspect.value.replace("_", " "), aspect=agg.aspect, top_k=2,
+                        # Kartu peluang mengklaim aspek ini DIPUJI; buktinya wajib pujian.
+                        positive_only=True,
                     )
         opportunities = find_opportunities(aggregates, len(reviews), positive_evidence)
 
@@ -266,10 +454,40 @@ class AnalyzeService:
         if mode == AnalysisMode.FALLBACK:
             warnings.append("mode_sederhana")
 
+        # Dihitung per ulasan, bukan per sebutan - lihat catatan di AnalysisSummary.
+        reviews_with_complaint = sum(
+            1 for p in predictions if any(i.sentiment.value == "negatif" for i in p.predictions)
+        )
+
+        # Klausa negatif per (ulasan, aspek) - bahan kalimat pengakuan pada draf balasan.
+        # Diambil dari `source_sentence` yang memang sudah dicatat tiap prediksi untuk
+        # keterlacakan; tidak ada segmentasi ulang di sini.
+        negative_clauses: dict[tuple[str, str], str] = {}
+        for p in predictions:
+            for item in p.predictions:
+                if item.sentiment is Sentiment.NEGATIF:
+                    negative_clauses.setdefault(
+                        (p.review_id, item.aspect.value), item.source_sentence
+                    )
+
         analysis_id = f"an_{uuid.uuid4().hex[:12]}"
         self.qna_store.put(
             analysis_id,
-            QnAContext(index=index, aggregates=aggregates, total_reviews=len(reviews)),
+            QnAContext(
+                index=index,
+                aggregates=aggregates,
+                total_reviews=len(reviews),
+                traces=traces,
+                negative_clauses=negative_clauses,
+                # Kartu aksi ikut disimpan supaya pertanyaan "apa yang harus saya perbaiki
+                # duluan?" dijawab dari urutan prioritas yang SAMA dengan yang dibaca pengguna
+                # di laporan, bukan dari perhitungan kedua yang bisa berbeda hasilnya.
+                actions=cards,
+                reviews_with_complaint=reviews_with_complaint,
+                category=category,
+                period_start=min(dates, default=None),
+                period_end=max(dates, default=None),
+            ),
         )
 
         return AnalysisResult(
@@ -277,19 +495,23 @@ class AnalyzeService:
             summary=AnalysisSummary(
                 total_reviews=len(reviews),
                 reviews_with_image=sum(1 for r in reviews if r.has_image),
-                # Dihitung per ulasan, bukan per sebutan - lihat catatan di AnalysisSummary.
-                reviews_with_complaint=sum(
-                    1
-                    for p in predictions
-                    if any(i.sentiment.value == "negatif" for i in p.predictions)
-                ),
+                reviews_with_complaint=reviews_with_complaint,
                 period_start=min(dates, default=None),
                 period_end=max(dates, default=None),
                 executive_summary_text=self._executive_summary(aggregates, len(reviews), mode),
             ),
-            top_actions=cards,
+            # Jejak hanya ikut terbit bila diminta. Kartu yang disimpan di konteks sesi tetap
+            # ramping - salinannya di sini yang membawa trace, bukan yang di penyimpanan.
+            top_actions=(
+                [c.model_copy(update={"trace": traces.get(c.action_id)}) for c in cards]
+                if trace
+                else cards
+            ),
             aspect_aggregates=aggregates,
             visual_findings=visual_predictions,
+            contradictions=self._contradiction_findings(
+                fused, reviews, visual_predictions
+            ),
             benchmark=benchmarks,
             opportunities=opportunities,
             data_quality=data_quality,
@@ -300,6 +522,7 @@ class AnalyzeService:
             benchmark_by_category=benchmark_by_category,
             warnings=warnings,
             mode=mode,
+            confidence_calibrated=bool(getattr(self.text_adapter, "calibrated", False)),
             model_versions={
                 "text": self.text_adapter.model_version,
                 "embedding": getattr(self.embedding_adapter, "model_name", "tidak aktif"),
