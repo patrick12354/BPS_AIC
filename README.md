@@ -618,7 +618,23 @@ Status validasi per kepala model, apa adanya:
 | **Aspek** | Gold 500 klausa dari pra-anotasi LLM yang ditinjau tim (ADR-017) | IndoBERT 0,766 **setara** leksikon 0,770 | Tidak lulus - tetapi gold-nya sendiri masih bisa dicurigai |
 | **Aspek, divalidasi manusia** | 120 klausa berlabel manusia (pelabel independen; pembanding LLM dengan kappa 0,68) | IndoBERT **0,579** ≈ leksikon 0,581 ≈ TF-IDF 0,585; gold ADR-017 sendiri 0,704 terhadap manusia | **TIDAK LULUS, terkonfirmasi** - bukan karena gold. Titik terlemah spesifik: ukuran_varian 0,17, kualitas_produk 0,57. Rincian MODEL_CARD §3.3b |
 
-Satu temuan tambahan yang tidak nyaman dan karena itu ditulis: pembacaan LLM zero-shot mencapai 0,660 pada aspek - **lebih baik dari model fine-tuned**. Produk ini sengaja tidak memanggil LLM saat inferensi (ADR-001), jadi jalan keluarnya adalah melatih ulang kepala aspek pada label gold + manusia ([ROADMAP_FINAL.md](docs/ROADMAP_FINAL.md) L0'). Seluruh perangkat validasinya ada di repositori: `scripts/build_aspect_human_pack.py` → `ml/text/evaluate_aspect_human.py`.
+Satu temuan tambahan yang tidak nyaman dan karena itu ditulis: pembacaan LLM zero-shot mencapai 0,660 pada aspek - **lebih baik dari model fine-tuned**. Produk ini sengaja tidak memanggil LLM saat inferensi (ADR-001), jadi jalan keluarnya adalah melatih ulang kepala aspek pada label semantik ([ROADMAP_FINAL.md](docs/ROADMAP_FINAL.md) L0'). Tahap pertamanya sudah dijalankan dengan protokol yang ditulis sebelum angka dilihat (`ml/text/distill_aspect_head.py`, MODEL_CARD §3.3c): kepala aspek v2 dari 411 klausa gold → macro 0,585 (**tidak berbeda bermakna** dari 0,579), tetapi dua aspek paling sering di kategori demo naik 0,11–0,13; dipasang sebagai bawaan dengan jalan kembali `ASPECT_HEAD=v1`. Seluruh perangkatnya ada di repositori: `scripts/build_aspect_human_pack.py` → `ml/text/evaluate_aspect_human.py` → `ml/text/distill_aspect_head.py`.
+
+### 11.1 Integrasi: API, jalur masukan, dan yang sengaja tidak didukung
+
+Seluruh kemampuan dilayani lewat satu REST API sinkron yang dipakai sendiri oleh antarmuka web - tidak ada jalur tersembunyi. Dokumentasi OpenAPI hidup di **`/api/docs`** (dan skema mesinnya di `/api/openapi.json`), dapat dibuka dari luar karena diletakkan di bawah prefiks yang diteruskan nginx. Klien mana pun yang bisa mengirim JSON dapat mengintegrasikannya: unggah ulasan → terima kartu aksi + bukti; tanya jawab; draf balasan; jejak perhitungan; arsip dan perbandingan.
+
+| Jalur masukan | Cara | Status |
+| --- | --- | --- |
+| Tempel teks | satu ulasan per baris | ✅ |
+| Berkas CSV/JSON | ekspor marketplace; kolom dipetakan otomatis dan dapat dikoreksi | ✅ |
+| Tangkapan layar | PNG/JPG/WebP → OCR (Tesseract, `ind`+`eng`) → draf yang wajib diperiksa | ✅ |
+| Foto dari kamera | ponsel memotret layar yang menampilkan ulasan → jalur OCR yang sama | ✅ |
+| Foto produk dari ulasan | skema siap (`ReviewImage`), model visual **belum lolos gerbang** | ⛔ jujur ditolak aktif |
+| Integrasi API marketplace langsung | - | ⛔ status legal pengambilan data otomatis belum jelas; tidak dibangun |
+| Siaran video / umpan kamera langsung | - | ⛔ **sengaja tidak** - tidak ada jembatan ke data ulasan; membangunnya berarti teknologi yang dipaksakan |
+
+Baris terakhir ditulis eksplisit karena pertanyaannya wajar: produk ini sudah menerima gambar, kenapa tidak video? Karena ulasan pelanggan lahir sebagai teks dan foto diam di marketplace - tidak ada video yang perlu "diawasi". Rubrik penilaian menanyakan apakah penggunaan AI "relevan dan tidak dipaksakan"; video langsung adalah contoh persis dari yang dipaksakan.
 
 Rencana evaluasi penuh mencakup delapan baseline pembanding, ablation per lapisan, metrik retrieval, dan penilaian kualitatif rekomendasi. Rinciannya di [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 

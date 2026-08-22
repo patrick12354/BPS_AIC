@@ -290,6 +290,27 @@ export function ScreenshotInput({ shots, drafts, busy, onPick, onEdit, onRemove,
         hint="PNG atau JPG · bisa beberapa sekaligus"
       />
 
+      {/* Jalur kamera, terpisah dari dropzone: atribut `capture` pada input yang sama akan
+          memaksa kamera dan menutup pilihan galeri di sebagian peramban ponsel. Di desktop
+          tanpa kamera, input ini jatuh ke pemilih berkas biasa - tidak ada yang rusak. Yang
+          difoto adalah LAYAR yang menampilkan ulasan (ponsel lain, tablet, monitor); hasilnya
+          tetap lewat OCR yang sama dan tetap menjadi draf yang wajib diperiksa. */}
+      <label className="btn btn--outline camera-pick">
+        Ambil foto layar ulasan dengan kamera
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          disabled={busy}
+          onChange={(e) => {
+            const picked = [...(e.target.files ?? [])];
+            if (picked.length) onPick(picked);
+            e.target.value = "";
+          }}
+        />
+      </label>
+
       {busy && (
         <div className="panel">
           <p className="body">Membaca teks dari gambar…</p>

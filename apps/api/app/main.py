@@ -142,6 +142,14 @@ app = FastAPI(
     version="0.1.0",
     description="Mengubah ulasan pelanggan UMKM menjadi rekomendasi aksi dengan bukti kutipan.",
     lifespan=lifespan,
+    # Dokumentasi OpenAPI diletakkan DI BAWAH /api/ - bukan di /docs bawaan FastAPI. Di belakang
+    # nginx hanya /api/ yang diteruskan ke proses ini; /docs jatuh ke aplikasi web (SPA) dan
+    # menampilkan halaman depan, sehingga "API-nya terdokumentasi" menjadi klaim yang tidak bisa
+    # dibuktikan pengunjung. Sekarang http://<host>/api/docs dan /api/openapi.json dapat dibuka
+    # dari luar, dan skema yang sama dipakai klien mana pun yang ingin mengintegrasikan.
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    redoc_url=None,
 )
 app.add_middleware(
     CORSMiddleware,
