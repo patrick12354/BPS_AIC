@@ -78,3 +78,8 @@ data/annotation/label.html
 .claude/
 .vscode/
 .idea/
+
+# Pengecualian: kepala aspek v2 (L0') adalah artefak KECIL (~36 KB) yang sengaja dilacak git,
+# berbeda dari checkpoint 499 MB. Ia dibaca saat melayani request dan dibakar ke image lewat
+# COPY ml/. Tanpa baris ini, artefak tidak pernah sampai ke repositori maupun ke container.
+!ml/text/artifacts/*.pt

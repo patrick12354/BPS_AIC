@@ -46,6 +46,13 @@ kontrol yang kini terbukti perlu: "yakin" LLM hanya 53% cocok). (2) Latih ulang 
 **Ukuran berhasil.** Macro F1 aspek pada 120 klausa manusia naik terukur di atas leksikon
 (0,581), khususnya ukuran_varian dan kualitas_produk. Bila tidak naik, tulis; itu pun informasi.
 
+**Status tahap 1 - SELESAI 23 Agustus 2026** (MODEL_CARD §3.3c): kepala dilatih ulang dari 411
+klausa gold di atas encoder beku → macro 0,585 (lama 0,579; leksikon 0,581) - **tidak berbeda
+bermakna secara makro**, tetapi kualitas_produk +0,11 dan kesesuaian_deskripsi +0,13 (micro
++0,022). Dipasang sebagai bawaan dengan jalan kembali `ASPECT_HEAD=v1`. Tahap 2 (label latih
+2-3 ribu klausa + kontrol manusia, lalu fine-tune penuh) tetap pekerjaan babak final - 411 label
+terbukti tidak cukup untuk melampaui leksikon secara makro.
+
 **Usaha.** 1-2 hari; pelabelan kontrol 1 orang x 2 jam.
 
 ## L1 - Kalibrasi keyakinan (temperature scaling)

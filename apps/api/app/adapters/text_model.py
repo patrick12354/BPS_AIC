@@ -10,6 +10,7 @@ Inferensi berjalan CPU-only secara default - GPU hanya dipakai bila kebetulan te
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,10 @@ from ..schemas import (
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_CHECKPOINT = REPO_ROOT / "models" / "indobert-nlp01" / "model.pt"
 ML_TEXT = REPO_ROOT / "ml" / "text"
+# Kepala aspek v2 (L0') - artefak ~36 KB yang DILACAK git, berbeda dari checkpoint 499 MB yang
+# dipasang sebagai volume. Keduanya berjalan bersama: checkpoint memberi encoder + kepala lama,
+# artefak menimpa kepala aspeknya bila ada. Lihat ml/text/distill_aspect_head.py.
+ASPECT_HEAD_V2 = ML_TEXT / "artifacts" / "aspect_head_v2.pt"
 
 SENTIMENTS = ["negatif", "netral", "positif"]
 
@@ -150,7 +155,26 @@ class TextModelAdapter:
                 )
                 self.calibrated = True
 
+            # Kepala aspek v2 (L0', ml/text/distill_aspect_head.py): lapisan kecil di atas
+            # checkpoint, dilacak git di ml/text/artifacts, dipasang bila ada. Ia menggantikan
+            # BOBOT kepala aspek dan AMBANGNYA sekaligus - keduanya dipilih bersama lewat CV,
+            # memakai yang satu tanpa yang lain berarti memakai model yang tidak pernah
+            # dievaluasi. Suhu aspek dikembalikan ke 1,0 karena ambang v2 dipilih pada sigmoid
+            # mentah. Dapat dimatikan lewat ASPECT_HEAD=v1 untuk membandingkan atau kembali.
+            self.aspect_head_version = "v1"
+            if os.getenv("ASPECT_HEAD", "v2").lower() != "v1" and ASPECT_HEAD_V2.exists():
+                v2 = torch.load(ASPECT_HEAD_V2, map_location="cpu", weights_only=False)
+                urutan = [v2["aspects"].index(a.value) for a in self.aspects]
+                with torch.no_grad():
+                    self.model.aspect_head.weight.copy_(v2["aspect_head.weight"][urutan].to(device))
+                    self.model.aspect_head.bias.copy_(v2["aspect_head.bias"][urutan].to(device))
+                self.threshold = float(v2["aspect_threshold"])
+                self.aspect_temperature = 1.0
+                self.aspect_head_version = str(v2.get("version", "v2"))
+
             versi = f"indobert-nlp01@thr{round(self.threshold, 4)}"
+            if self.aspect_head_version != "v1":
+                versi += f"+{self.aspect_head_version}"
             self.model_version = (
                 f"{versi}+cal{self.sentiment_temperature}" if self.calibrated else versi
             )

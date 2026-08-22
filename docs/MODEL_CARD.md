@@ -332,6 +332,46 @@ formalitas.
 tidak mengungguli leksikon pada aspek, dan gold ADR-017 bukan penyebabnya. Klaim aspek tetap
 **TIDAK LULUS** (§4.3), kini dengan dasar yang lebih kuat daripada sebelumnya.
 
+### 3.3c L0' - kepala aspek dilatih ulang dari label semantik (22 Agustus 2026)
+
+Script: `ml/text/distill_aspect_head.py` · hasil: `ml/evaluation/aspect_head_v2_results.json` ·
+artefak: `ml/text/artifacts/aspect_head_v2.pt` (36 KB, dilacak git).
+
+**Protokol, ditulis sebelum angka dilihat.** TEST = 120 klausa berlabel manusia (§3.3b), tidak
+pernah ikut latih maupun seleksi. TRAIN = gold ADR-017 dikurangi klausa yang ada di TEST = 411
+klausa. Encoder IndoBERT beku (representasinya sudah terbukti pada sentimen); hanya kepala aspek
+- satu lapisan linier - dilatih ulang. Hyperparameter dipilih 5-fold CV di TRAIN (kisi kecil,
+dinyatakan di muka); TEST dilihat satu kali. Artefak ditulis hanya bila macro F1 di TEST melampaui
+kepala lama.
+
+| Kepala aspek, pada 120 klausa manusia | Macro F1 | Micro F1 |
+| --- | --- | --- |
+| Lama (dilatih dari label leksikon, ambang 0,70) | 0,579 | 0,614 |
+| **v2 (dilatih dari gold ADR-017, ambang 0,30)** | **0,585** | **0,636** |
+| Leksikon (rujukan) | 0,581 | 0,620 |
+
+| Aspek | Lama → v2 | Aspek | Lama → v2 |
+| --- | --- | --- | --- |
+| kualitas_produk (n=38) | 0,567 → **0,675** | kemasan (n=8) | 0,889 → 0,800 |
+| kesesuaian_deskripsi (n=22) | 0,622 → **0,756** | pengiriman (n=11) | 0,667 → 0,636 |
+| harga_value (n=12) | 0,846 → 0,880 | pelayanan_penjual (n=9) | 0,667 → **0,500** |
+| ukuran_varian (n=9) | 0,174 → 0,231 | rasa (n=6) | 0,800 → 0,667 |
+
+**Bacaan jujurnya.** Secara makro, v2 **tidak berbeda bermakna** dari kepala lama maupun leksikon
+(+0,006 pada 120 klausa - jauh di dalam noise). Yang berubah adalah *distribusinya*: dua aspek
+yang paling sering dan paling lemah - kualitas_produk dan kesesuaian_deskripsi - naik 0,11 dan
+0,13, dengan harga pelayanan_penjual dan kemasan turun. Karena itu micro F1 (yang menimbang
+frekuensi) naik lebih terasa, +0,022. CV di TRAIN mencapai 0,764 - jauh di atas TEST - yang
+menggarisbawahi temuan §3.3b: label gold-LLM konsisten di dalam dirinya, tetapi berbeda dari
+pelabel manusia ini pada ~30% klausa.
+
+**Keputusan:** v2 dipasang sebagai bawaan (`TextModelAdapter` menimpa bobot DAN ambang kepala
+aspek bila artefaknya ada; `ASPECT_HEAD=v1` mengembalikan kepala lama). Alasannya bukan "lebih
+baik" - alasannya adalah *lebih baik pada aspek yang paling sering muncul di kategori demo*,
+dengan biaya nol pada arsitektur dan jalan kembali satu variabel lingkungan. Klaim gerbang aspek
+**tidak berubah: TIDAK LULUS.** Yang akan mengubahnya adalah label latih yang lebih banyak dan
+lebih manusiawi (L0' lanjutan di ROADMAP_FINAL), bukan kepala yang lebih pintar.
+
 ### 3.4 Evaluasi pada dataset berlabel MANUSIA yang sudah ada - tanpa anotasi tambahan
 
 Script: `ml/text/evaluate_external.py` · hasil: `ml/evaluation/external_results.json`.

@@ -1,0 +1,105 @@
+{
+  "protocol": "TEST = 120 klausa berlabel manusia, tidak pernah ikut latih/seleksi; TRAIN = gold ADR-017 minus TEST; encoder beku; kepala dipilih via 5-fold CV di TRAIN; TEST dilihat sekali.",
+  "n_train": 411,
+  "n_test": 120,
+  "selected": {
+    "epochs": 120,
+    "weight_decay": 0.0001,
+    "lr": 0.005,
+    "use_pos_weight": false,
+    "warm_start": true,
+    "threshold": 0.3,
+    "cv_macro_f1": 0.7643,
+    "cv_std": 0.0699
+  },
+  "cv_top5": [
+    {
+      "epochs": 120,
+      "weight_decay": 0.0001,
+      "lr": 0.005,
+      "use_pos_weight": false,
+      "warm_start": true,
+      "threshold": 0.3,
+      "cv_macro_f1": 0.7643,
+      "cv_std": 0.0699
+    },
+    {
+      "epochs": 120,
+      "weight_decay": 0.001,
+      "lr": 0.005,
+      "use_pos_weight": false,
+      "warm_start": true,
+      "threshold": 0.3,
+      "cv_macro_f1": 0.7643,
+      "cv_std": 0.0699
+    },
+    {
+      "epochs": 120,
+      "weight_decay": 0.01,
+      "lr": 0.005,
+      "use_pos_weight": false,
+      "warm_start": true,
+      "threshold": 0.3,
+      "cv_macro_f1": 0.7643,
+      "cv_std": 0.0699
+    },
+    {
+      "epochs": 120,
+      "weight_decay": 0.0001,
+      "lr": 0.005,
+      "use_pos_weight": false,
+      "warm_start": false,
+      "threshold": 0.3,
+      "cv_macro_f1": 0.7632,
+      "cv_std": 0.0696
+    },
+    {
+      "epochs": 120,
+      "weight_decay": 0.001,
+      "lr": 0.005,
+      "use_pos_weight": false,
+      "warm_start": false,
+      "threshold": 0.3,
+      "cv_macro_f1": 0.7632,
+      "cv_std": 0.0696
+    }
+  ],
+  "old_head_on_test": {
+    "threshold": 0.7,
+    "macro_f1": 0.5791,
+    "micro_f1": 0.6142,
+    "per_class": {
+      "kualitas_produk": 0.5667,
+      "kesesuaian_deskripsi": 0.6222,
+      "harga_value": 0.8462,
+      "ukuran_varian": 0.1739,
+      "rasa_kualitas_makanan": 0.8,
+      "kemasan": 0.8889,
+      "pengiriman": 0.6667,
+      "pelayanan_penjual": 0.6667,
+      "kelengkapan": 0.25,
+      "keaslian": 0.8889,
+      "kemudahan_penggunaan": 0.0
+    }
+  },
+  "new_head_on_test": {
+    "threshold": 0.3,
+    "macro_f1": 0.5852,
+    "micro_f1": 0.636,
+    "per_class": {
+      "kualitas_produk": 0.6753,
+      "kesesuaian_deskripsi": 0.7556,
+      "harga_value": 0.88,
+      "ukuran_varian": 0.2308,
+      "rasa_kualitas_makanan": 0.6667,
+      "kemasan": 0.8,
+      "pengiriman": 0.6364,
+      "pelayanan_penjual": 0.5,
+      "kelengkapan": 0.25,
+      "keaslian": 0.8889,
+      "kemudahan_penggunaan": 0.1538
+    }
+  },
+  "lexicon_on_test_reference": 0.581,
+  "artifact_written": true
+}
