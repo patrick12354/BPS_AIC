@@ -239,6 +239,30 @@ _Diisi setelah error analysis (bagian 26.1 langkah 15). Lihat juga [LIMITATIONS.
 _Seed, hyperparameter, versi model, dan perintah reproduksi dicatat di sini setelah training._
 
 
+### 3.3b Validasi aspek oleh manusia independen - perangkatnya, dan statusnya
+
+Temuan §3.3 punya dua tafsir yang sangat berbeda: (a) fine-tuning memang tidak menambah apa pun
+pada aspek, atau (b) gold ADR-017 - yang seluruh labelnya lahir dari satu sumber pembacaan LLM -
+membawa bias yang kebetulan dekat dengan leksikon. Petunjuk ke arah (b): pada sentimen, gold
+yang sama memperlihatkan IndoBERT setara TF-IDF, padahal pada PRDECT-ID berlabel manusia
+IndoBERT unggul jelas (§3.4). Selisih arah ini tidak bisa diselesaikan dengan lebih banyak
+evaluasi pada gold yang sama; ia hanya bisa diselesaikan oleh anotasi manusia dari nol.
+
+Perangkatnya ada di repositori dan dapat dijalankan siapa pun:
+
+| Langkah | Perintah | Keluaran |
+| --- | --- | --- |
+| Susun paket | `python scripts/build_aspect_human_pack.py` | 200 klausa (150 bertingkat dari gold - tiap aspek minimal 8 contoh - + 50 segar dari ulasan Shopee asli yang tidak pernah masuk gold/latih) → dua berkas pelabel identik berurutan acak, alat pelabelan HTML lokal, panduan dengan contoh batas rancu |
+| Labeli | dua orang, terpisah, `data/annotation/label_aspek.html` | `aspect_human_A_done.csv`, `aspect_human_B_done.csv` |
+| Ukur | `python ml/text/evaluate_aspect_human.py` | Cohen's kappa per aspek (aspek dengan kappa < 0,40 ditandai **tidak dapat ditafsirkan**, bukan dilaporkan rata); baris tak sepakat → adjudikator ketiga; lalu leksikon / TF-IDF / IndoBERT / **label gold-LLM** dibandingkan pada rujukan manusia yang sama → `ml/evaluation/aspect_human_results.json` |
+
+Baris "label gold-LLM sebagai pendekatan" adalah kuncinya: ia mengukur seberapa jauh gold lama
+sendiri cocok dengan manusia, sehingga tafsir (a) dan (b) dapat dibedakan dengan angka.
+
+**Status saat kartu ini ditulis: paket tersusun, pelabelan belum dijalankan.** Begitu selesai,
+tabel hasilnya ditempel di sini apa pun arahnya - termasuk bila IndoBERT tetap tidak unggul.
+Sampai saat itu, klaim aspek tetap seperti di §4.3: **TIDAK LULUS**.
+
 ### 3.4 Evaluasi pada dataset berlabel MANUSIA yang sudah ada - tanpa anotasi tambahan
 
 Script: `ml/text/evaluate_external.py` · hasil: `ml/evaluation/external_results.json`.

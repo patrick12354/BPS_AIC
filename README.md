@@ -144,6 +144,32 @@ ADR-001 (local-first, bukan API komersial).
 
 Bukti empiris dari data kami sendiri mendukung ini: pada 96.300 klausa ulasan nyata, **baseline berbasis kecocokan permukaan runtuh pada fenomena komposisional** - sentimen campuran, negasi, dan sarkasme - meski menangani typo dan slang dengan baik. Rinciannya di [docs/MODEL_CARD.md](docs/MODEL_CARD.md) §3.1. Inilah celah yang harus ditutup model kontekstual, dan menjadi pembanding yang bermakna, bukan klaim kosong.
 
+### 3.3 Pernyataan kebaruan - apa persisnya yang belum ada
+
+Riset ABSA berbahasa Indonesia dengan IndoBERT sudah cukup banyak - ulasan hotel, aplikasi transportasi, produk kecantikan, konten perjalanan (lihat rujukan di [DATASET_CARD.md](docs/DATASET_CARD.md) §6 dan MODEL_CARD §6). **Semuanya berhenti pada label**: klausa ini aspek X bersentimen Y, lalu angka F1. Tidak satu pun melanjutkan ke pertanyaan yang sebenarnya diajukan pemilik toko. Kebaruan Ulasin bukan di salah satu komponennya, melainkan pada rantai yang dibuat utuh dan **dapat diperiksa di setiap matanya**:
+
+| Mata rantai | Yang sudah ada di tempat lain | Yang baru di sini |
+| --- | --- | --- |
+| Klasifikasi aspek + sentimen | Ya - banyak paper ABSA IndoBERT | Bahasa marketplace informal, per **klausa** (bukan per ulasan), dengan dua gerbang evaluasi yang salah satunya dinyatakan tidak lulus |
+| Dari label ke prioritas | Tidak ada untuk konteks UMKM ID | Skor deterministik frekuensi × keparahan × modifier, dengan **jejak perhitungan** yang dapat dihitung ulang pembacanya |
+| Dari prioritas ke bukti | Dashboard marketplace: tidak ada; alat berbayar: ringkasan tanpa kutipan per klaim | Setiap angka membawa kutipan ulasan aslinya (retrieval + MMR), dan sistem **menolak menjawab** bila buktinya tidak ada |
+| Dari bukti ke tindakan | Tidak ada | Kartu aksi berbahasa pemilik toko + draf balasan yang menyisakan keputusan uang di tangan manusia |
+| Dari tindakan ke pengukuran ulang | Butuh database pengguna | Arsip agregat milik pengguna + perbandingan antar-periode yang menolak menyebut "membaik" bila selisihnya di bawah margin kesalahan |
+
+Tiga sifat yang mengikat seluruh rantai - dan yang menurut kami lebih langka daripada fitur mana pun: **angka tidak pernah dikarang** (tool deterministik, LLM tidak menghitung), **sistem gagal dengan anggun dan mengaku** (`/readiness` menyebut apa yang mati), dan **keputusan selalu milik manusia** (tidak ada nilai `executed` di sistem ini).
+
+### 3.4 Bukti dampak dari literatur dan data resmi
+
+Klaim dampak dibatasi pada yang punya sumber. Tiga yang menopang desain produk:
+
+| Klaim | Bukti | Dipakai untuk |
+| --- | --- | --- |
+| Membalas ulasan menaikkan rating dan volume ulasan | Proserpio & Zervas, *Marketing Science* 36(5), 2017, puluhan ribu ulasan TripAdvisor: hotel yang mulai membalas menerima **+12% ulasan** dan rating naik rata-rata **+0,12 bintang**; diringkas *Harvard Business Review*, Feb 2018 | Dasar fitur **Draf Balasan** - bukan hiasan, melainkan tindakan yang efeknya terukur di literatur |
+| Populasi yang terdampak sangat besar | Kemenkop UKM 2025: **65,5 juta** unit UMKM, **61,9% PDB**, ~97% tenaga kerja; **25 juta** di antaranya sudah onboarding di platform digital dari target 30 juta | Sizing pasar di BUSINESS_VALUE §2 - yang dilayani adalah segmen yang sudah online, bukan seluruh populasi |
+| Unit usaha e-commerce mayoritas mikro dan tumbuh cepat | BPS Statistik E-Commerce 2024: **4,40 juta** unit, +15,3% setahun, +86% dalam empat tahun | Target pengguna utama, dan alasan harga harus mendekati nol |
+
+Yang **belum** punya bukti dan karena itu tidak diklaim: bahwa prioritas yang dihasilkan benar-benar diikuti pemilik toko, dan berapa waktu yang ia hemat. Keduanya tercatat sebagai riset terbuka di [BUSINESS_VALUE.md](docs/BUSINESS_VALUE.md) §9, dengan protokol pengukurannya.
+
 **Yang produk ini sengaja BUKAN:** chatbot generik tanpa cakupan · dashboard sentiment analysis biasa · wrapper tipis di atas LLM API · sistem otonom yang mengeksekusi keputusan bisnis · generator materi iklan otomatis.
 
 ## 4. Alur kerja sistem end-to-end
@@ -582,7 +608,17 @@ Repositori ini memisahkan tegas tiga jenis angka, dan penamaannya konsisten di s
 | `stress_*` | Diukur pada label yang diturunkan dari rating | Hanya sebagai diagnostik |
 | gold test set | Diukur pada label manusia | **Ya - satu-satunya** |
 
-Label aspek dihasilkan lewat *weak supervision* karena tidak ada dataset ABSA berbahasa Indonesia domain e-commerce yang tersedia publik. Konsekuensinya diakui terbuka: metrik pada label silver berisiko **sirkular** - model dapat sekadar memulihkan aturan yang membuat labelnya. Karena itu gold test set berlabel manusia disiapkan sejak awal sebagai penengah, dan **belum ada angka model teks yang dianggap final sampai anotasi itu selesai**.
+Label aspek dihasilkan lewat *weak supervision* karena tidak ada dataset ABSA berbahasa Indonesia domain e-commerce yang tersedia publik. Konsekuensinya diakui terbuka: metrik pada label silver berisiko **sirkular** - model dapat sekadar memulihkan aturan yang membuat labelnya.
+
+Status validasi per kepala model, apa adanya:
+
+| Kepala | Penengah | Hasil | Status |
+| --- | --- | --- | --- |
+| **Sentimen** | Label manusia independen (NusaX-senti, PRDECT-ID) | IndoBERT **0,730** vs leksikon 0,700 vs TF-IDF 0,627; netral 0,021 → 0,645 | **Tervalidasi** |
+| **Aspek** | Gold 500 klausa dari pra-anotasi LLM yang ditinjau tim (ADR-017) | IndoBERT 0,766 **setara** leksikon 0,770 | **Belum tervalidasi manusia independen** - dan selisih arahnya dengan sentimen justru mencurigakan: bisa modelnya, bisa gold-nya |
+| Aspek, langkah berikutnya | Dua pelabel manusia independen + adjudikator, Cohen's kappa per aspek | Paket siap: `python scripts/build_aspect_human_pack.py` → label → `python ml/text/evaluate_aspect_human.py` | Berjalan - hasilnya akan ditulis ke MODEL_CARD §3.3b **apa pun arahnya** |
+
+Baris terakhir adalah satu-satunya klaim model yang masih terbuka, dan perangkatnya sudah ada di repositori sehingga siapa pun - termasuk juri - dapat menjalankannya.
 
 Rencana evaluasi penuh mencakup delapan baseline pembanding, ablation per lapisan, metrik retrieval, dan penilaian kualitatif rekomendasi. Rinciannya di [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 
@@ -613,6 +649,9 @@ Ditulis apa adanya, bukan diperhalus. Daftar lengkap di [docs/LIMITATIONS.md](do
 - **Baseline kategori bersifat historis dan statis**, bukan pemantauan kompetitor real-time.
 - **Tidak ada riwayat lintas sesi** - setiap sesi dimulai dari awal, konsekuensi dari desain session-only.
 - **Rekomendasi adalah saran berbasis pola data, bukan kebenaran mutlak.** Tombol tolak ada justru karena itu.
+- **Label aspek belum divalidasi manusia independen** - pada gold ADR-017, model setara leksikon. Perangkat validasinya sudah ada ([bagian 11](#11-evaluasi-dan-batas-klaim)); hasilnya akan ditulis apa pun arahnya.
+
+Rencana pengembangan babak final - dengan spesifikasi, titik sambung di kode, dan ukuran berhasil per item - ada di [docs/ROADMAP_FINAL.md](docs/ROADMAP_FINAL.md).
 
 ## 14. Struktur repositori
 

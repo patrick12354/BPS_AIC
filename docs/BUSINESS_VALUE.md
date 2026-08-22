@@ -148,6 +148,7 @@ membuktikan atau menggugurkannya.
 | Prioritas yang benar, bukan sekadar terurut | Tingkat penerimaan Action Card (tombol Terima vs Tolak) selama pemakaian nyata | Mekanisme perekamnya ada di UI; **belum ada data lapangan** |
 | Rekomendasi dapat diverifikasi | Proporsi rekomendasi yang membawa kutipan pendukung | `[TERUKUR]` 100% menurut kontrak ACT-01 - kartu tanpa bukti tidak diterbitkan |
 | Bekerja pada bahasa ulasan sungguhan | Akurasi sentimen pada label manusia | `[TERUKUR]` 0,730 vs leksikon 0,700 dan TF-IDF 0,627 ([MODEL_CARD](MODEL_CARD.md) §4.3) |
+| Membalas ulasan memperbaiki reputasi toko (dasar fitur Draf Balasan) | Efek balasan penjual pada rating dan volume ulasan | `[LITERATUR]` Proserpio & Zervas, *Marketing Science* 36(5), 2017 - hotel yang mulai membalas ulasan TripAdvisor menerima +12% ulasan dan rating naik rata-rata +0,12 bintang (diringkas HBR, Feb 2018). Efek pada marketplace Indonesia **belum diukur**; fitur ini memberi draf, bukan klaim efek |
 
 Baris kedua adalah yang paling penting sekaligus paling kosong. Tombol **Terima / Tolak** di
 setiap Action Card bukan hiasan tata kelola - ia instrumen pengukuran produk yang paling
@@ -296,6 +297,8 @@ atas bukti dan bagian mana yang berdiri di atas asumsi.
 | 300 ulasan/penjual/bulan | Survei volume ulasan | Seluruh hitungan kapasitas bergeser |
 | Pendamping UMKM sebagai kanal distribusi | Uji coba dengan satu dinas atau asosiasi | Butuh kanal akuisisi lain yang belum teridentifikasi |
 | Prioritas yang dihasilkan benar-benar berguna | Rekam agregat Terima/Tolak selama pemakaian nyata | Formula skor prioritas ([README §5.4](../README.md#54-formula-skor-prioritas)) perlu dikalibrasi ulang |
+| Label aspek model pada penilaian manusia independen | Dua pelabel + adjudikator, kappa per aspek - perangkatnya sudah ada (`scripts/build_aspect_human_pack.py`, `ml/text/evaluate_aspect_human.py`) | Kepala aspek diganti/dilatih ulang; klaim "mengelompokkan keluhan per aspek" harus dibatasi pada aspek yang terbukti |
+| Efek Draf Balasan pada marketplace Indonesia | Bandingkan rating/volume ulasan toko sebelum-sesudah rutin membalas (desain sebelum-sesudah dengan pembanding) | Fitur tetap berguna sebagai penghemat waktu, tetapi klaim dampak reputasi dicabut |
 
 Baris terakhir adalah risiko produk terbesar yang diketahui: bobot 0,3 dan 0,2 pada formula
 prioritas **belum divalidasi**, dan tidak akan tervalidasi oleh data laboratorium mana pun -
