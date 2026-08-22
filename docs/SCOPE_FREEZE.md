@@ -92,6 +92,13 @@ score = frequency_norm × severity_norm × confidence_norm
 ```
 
 Seluruh faktor dinormalisasi ke 0–1 sebelum dikalikan, hasil di-scale ke 0–100.
+
+> **Amendemen 22 Agustus 2026.** `confidence_norm` dikeluarkan dari rumus (lihat
+> `apps/api/app/tools/priority.py` dan `docs/LIMITATIONS.md`): nilainya belum terkalibrasi dan
+> bervariasi antar-aspek sejak berasal dari softmax, sehingga diam-diam memengaruhi urutan
+> kartu padahal sengaja tidak ditampilkan. Ia tetap dilaporkan di jejak perhitungan. Rumus yang
+> berlaku: `frequency_norm × severity_norm × (1 + 0.3 × recency_norm + 0.2 × benchmark_gap_norm)`.
+> Teks asli di atas dipertahankan sebagai catatan keputusan Fase 0.
 `Business Relevance` **dihapus** sebagai faktor kuantitatif terpisah (risiko double-counting
 dengan Severity). Bobot 0.3 / 0.2 berstatus `[REQUIRES VALIDATION]` - wajib diuji sensitivity
 ±50% pada Fase 8 sebelum dianggap final.

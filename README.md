@@ -12,7 +12,7 @@ Setiap klaim di dokumen ini punya satu perintah yang membuktikan atau membantahn
 
 | Klaim | Cara memeriksanya |
 | --- | --- |
-| "Angka tidak pernah dikarang" | Buka kartu aksi mana pun di dashboard, tekan **"Bagaimana angka ini dihitung?"**. Panelnya menampilkan klausa mentah yang terbaca model, prediksi tiap klausa, agregasinya, dan tiap komponen rumus prioritas beserta aritmetikanya. Kalikan sendiri: hasilnya adalah skor yang tertera di kartu. Lewat API: `POST /api/v1/analyze?trace=1`. |
+| "Angka tidak pernah dikarang" | Buka kartu aksi mana pun di halaman hasil analisis, tekan **"Bagaimana angka ini dihitung?"**. Panelnya menampilkan klausa mentah yang terbaca model, prediksi tiap klausa, agregasinya, dan tiap komponen rumus prioritas beserta aritmetikanya. Kalikan sendiri: hasilnya adalah skor yang tertera di kartu. Lewat API: `POST /api/v1/analyze?trace=1`. |
 | "Berjalan lokal, tanpa API berbayar" | Putus koneksi internet setelah container jalan, lalu analisis lagi. Tidak ada satu pun panggilan keluar di jalur inferensi. |
 | "Sistem gagal dengan anggun" | Kosongkan mount `./models`, nyalakan ulang. `GET /api/v1/readiness` menyebutkan persis apa yang sedang tidak aktif, dan analisis **tetap terbit** memakai jalur leksikon. |
 | "Versi model dapat diaudit" | `GET /api/v1/models` menyebut versi checkpoint teks, model embedding, dan status orchestrator. |
@@ -70,7 +70,7 @@ Dikerjakan bertahap mengikuti Fase 0–10. Setiap fase punya *acceptance criteri
 | 3 | Model visual - zero-shot CLIP, threshold, kalibrasi | ❌ **NO-GO** | argmax 45% kalah dari tebakan sepele 61%; jalur linear probe sudah ditulis dan siap dijalankan, menunggu foto tersedia kembali |
 | 4 | Retrieval & action engine (RET-01, ACT-01) | ✅ selesai | Action Card lolos spot-check anti-generik; RET-01 menolak menjawab saat bukti tak memadai |
 | 5 | Backend FastAPI - 11 endpoint, 16 tool contract | 🔄 berjalan | 11 endpoint jalan (termasuk OCR tangkapan layar, draf balasan, jejak perhitungan, arsip, dan perbandingan antar-periode); orchestrator belum, sistem berjalan di FALLBACK MODE |
-| 6 | Frontend React - landing + dashboard | 🔄 berjalan | Dua permukaan terpisah; alur unggah → proses → hasil (4 tab) terverifikasi di browser pada data contoh. Kotak FAQ non-AI di halaman pemasaran, 6 uji hijau ([bagian 7.1](#71-kotak-faq-di-halaman-pemasaran)) |
+| 6 | Frontend React - halaman pemasaran + layar kerja analisis | 🔄 berjalan | Dua permukaan terpisah; alur unggah → proses → hasil (4 tab) terverifikasi di browser pada data contoh. Kotak FAQ non-AI di halaman pemasaran, 6 uji hijau ([bagian 7.1](#71-kotak-faq-di-halaman-pemasaran)) |
 | 7 | Integrasi - termasuk jalur kegagalan & fallback | ✅ selesai | 16 integration test hijau, mencakup enam jalur wajib bagian 32 |
 | 8 | Evaluasi penuh + error analysis | ⬜ belum | metrik tercatat apa adanya |
 | 9 | Docker & reproducibility | ✅ selesai | **gate kritis LULUS** - `docker compose up --build` berjalan dari fresh clone, dan susunan yang sama melayani demo publik di [34.41.49.44](http://34.41.49.44) lewat pipeline auto-deploy build-dulu-baru-tukar ([DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
@@ -118,7 +118,7 @@ tercatat sebagai riset terbuka di [BUSINESS_VALUE.md](docs/BUSINESS_VALUE.md) §
 
 | Solusi existing | Yang dilakukannya | Di mana ia berhenti | Harga masuk |
 | --- | --- | --- | --- |
-| **Shopee Seller Centre** · **Tokopedia Seller Dashboard** · **TikTok Shop Seller Center** | Rating rata-rata, daftar ulasan, saring per bintang, statistik performa produk | Tidak mengelompokkan keluhan per aspek, tidak mengurutkan mana yang mendesak, tidak memberi rekomendasi tindakan. Dan tiap dashboard hanya melihat kanalnya sendiri | Gratis |
+| **Shopee Seller Centre** · **Tokopedia Seller Dashboard** · **TikTok Shop Seller Center** | Rating rata-rata, daftar ulasan, saring per bintang, statistik performa produk | Tidak mengelompokkan keluhan per aspek, tidak mengurutkan mana yang mendesak, tidak memberi rekomendasi tindakan. Dan tiap panel penjual hanya melihat kanalnya sendiri | Gratis |
 | **Yotpo** | Mengumpulkan dan menampilkan ulasan, widget rating | Alat pengumpulan ulasan, bukan alat analisis keluhan; tidak ada prioritisasi tindakan; dioptimalkan untuk Bahasa Inggris | dari **USD 79/bln** |
 | **Birdeye** | Manajemen reputasi multi-lokasi, ringkasan ulasan | Berharga per lokasi dengan kontrak 12 bulan dan onboarding terpisah; dirancang untuk bisnis multi-cabang berbahasa Inggris, bukan penjual marketplace Indonesia | **USD 299-449/bln** per lokasi + onboarding USD 500-1.500 |
 | **Thematic** | Analitik umpan balik bertema, benar-benar melakukan ekstraksi tema | Kelas perusahaan - harga masuknya saja ~Rp32 juta/bulan; model temanya tidak dilatih untuk ragam informal Bahasa Indonesia | dari **USD 2.000/bln** untuk 3 pengguna |
@@ -302,11 +302,11 @@ Kegagalan `classify_review_image()` **tidak** menghentikan analisis. Kegagalan d
 Bukan perkalian mentah enam faktor - versi final setelah kajian ulang:
 
 ```
-score = frequency_norm × severity_norm × confidence_norm
+score = frequency_norm × severity_norm
         × (1 + 0.3 × recency_norm + 0.2 × benchmark_gap_norm)
 ```
 
-Seluruh faktor dinormalisasi ke 0–1 sebelum dikalikan, hasil di-scale ke 0–100, lalu dipetakan ke tiga label urgensi. `Business Relevance` sengaja **dihapus** sebagai faktor terpisah karena tumpang tindih dengan Severity. Bobot 0,3 dan 0,2 berstatus **belum divalidasi** - wajib diuji sensitivity ±50% pada Fase 8 sebelum dianggap final.
+Seluruh faktor dinormalisasi ke 0–1 sebelum dikalikan, hasil di-scale ke 0–100, lalu dipetakan ke tiga label urgensi. `confidence_norm` (rata-rata probabilitas softmax klausa) pernah menjadi pengali inti ketiga dan **dikeluarkan** karena belum terkalibrasi: angka yang sengaja tidak ditampilkan di layar tidak boleh diam-diam mengatur urutan kartu. Ia tetap dilaporkan di jejak perhitungan beserta statusnya, dan akan kembali masuk rumus hanya setelah `confidence_calibrated` bernilai benar (metode di `docs/MODEL_CARD.md`). `Business Relevance` sengaja **dihapus** sebagai faktor terpisah karena tumpang tindih dengan Severity. Bobot 0,3 dan 0,2 berstatus **belum divalidasi** - wajib diuji sensitivity ±50% pada Fase 8 sebelum dianggap final.
 
 Jika total ulasan sesi < 15, seluruh Action Card diberi badge "confidence rendah - data terbatas" dan urgensinya dibatasi maksimal "Sedang", supaya sistem tidak terdengar pasti pada data yang terlalu sedikit.
 
@@ -378,9 +378,9 @@ Field `risk_if_recommendation_wrong` dan `user_action: null` bukan hiasan - kedu
 
 ## 7. Antarmuka pengguna
 
-Dua permukaan yang terpisah: halaman pemasaran di `#/` dan dashboard analisis di `#/analisis`. Halaman pemasaran perlu panjang dan bersuara, layar kerja perlu pendek dan diam - menyatukannya memaksa kompromi yang merugikan keduanya, dan membuat pengguna yang kembali harus menggulir melewati materi promosi setiap kali ingin bekerja.
+Dua permukaan yang terpisah: halaman pemasaran di `#/` dan layar kerja analisis di `#/analisis`. Halaman pemasaran perlu panjang dan bersuara, layar kerja perlu pendek dan diam - menyatukannya memaksa kompromi yang merugikan keduanya, dan membuat pengguna yang kembali harus menggulir melewati materi promosi setiap kali ingin bekerja.
 
-Di dalam dashboard alurnya tetap linear. Navigasi tab baru muncul setelah ada hasil; sebelum itu tidak ada apa pun untuk dijelajahi.
+Di dalam layar kerja alurnya tetap linear - satu unggahan masuk, satu hasil keluar. Navigasi tab baru muncul setelah ada hasil; sebelum itu tidak ada apa pun untuk dijelajahi.
 
 ```mermaid
 flowchart LR

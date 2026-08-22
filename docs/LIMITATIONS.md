@@ -100,9 +100,12 @@ tempat seperti itu ia terbaca sebagai hasil pengukuran. Ia bukan - dan sebuah an
 menyamar sebagai pengukuran merusak kepercayaan pada seluruh angka di sekitarnya, termasuk yang
 benar-benar diukur.
 
-Yang dilakukan: **angkanya dicabut dari antarmuka**. Ia tetap ada di payload API dan tetap
-menjadi faktor pada rumus prioritas - di sana pengaruhnya sama besar untuk semua aspek, jadi
-urutan kartu tidak terdistorsi olehnya.
+Yang dilakukan: **angkanya dicabut dari antarmuka, lalu dicabut juga dari rumus prioritas.**
+Ia tetap ada di payload API dan di jejak perhitungan - berlabel "dilaporkan, tidak dikalikan"
+- supaya statusnya terlihat, tetapi tidak lagi menjadi pengali skor. Pencabutan kedua
+menyusul setelah audit menemukan bahwa begitu angka itu berasal dari softmax (0,96-0,999 dan
+bervariasi antar-aspek), ia diam-diam mulai memengaruhi urutan kartu - persis yang sebelumnya
+dianggap tidak terjadi ketika nilainya masih konstan.
 
 Solusi sejatinya bukan menyembunyikan, melainkan mengukur: temperature scaling (Guo et al.,
 2017) satu parameter per head, di-fit pada split validasi, dengan ECE sebelum-sesudah dilaporkan

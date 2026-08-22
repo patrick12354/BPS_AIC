@@ -5,13 +5,22 @@ Action Card dapat diaudit dan konsisten antar run.
 
 Formula final (bagian 22.2 - hasil kajian ulang, BUKAN perkalian mentah enam faktor):
 
-    score = frequency_norm x severity_norm x confidence_norm
+    score = frequency_norm x severity_norm
             x (1 + w_recency x recency_norm + w_benchmark x benchmark_gap_norm)
 
-Tiga faktor pertama adalah PENGALI INTI; recency dan benchmark gap hanya MODIFIER. Alasannya:
-sebuah masalah tidak menjadi prioritas hanya karena sedang naik - ia harus sering, parah, dan
-diyakini modelnya lebih dulu. `Business Relevance` sengaja dihapus sebagai faktor terpisah
-karena tumpang tindih dengan Severity.
+Dua faktor pertama adalah PENGALI INTI; recency dan benchmark gap hanya MODIFIER. Alasannya:
+sebuah masalah tidak menjadi prioritas hanya karena sedang naik - ia harus sering dan parah
+lebih dulu. `Business Relevance` sengaja dihapus sebagai faktor terpisah karena tumpang tindih
+dengan Severity.
+
+`confidence_norm` pernah menjadi pengali inti ketiga dan DIKELUARKAN dari rumus. Nilainya
+adalah rata-rata probabilitas softmax klausa yang belum terkalibrasi (0,96-0,999 pada
+checkpoint saat ini) - angka yang tidak dikarang tetapi juga belum bermakna sebagai keyakinan.
+Mengalikan skor dengan angka semacam itu berarti menyisipkan faktor yang sengaja tidak
+ditampilkan di layar ke dalam urutan kartu yang ditampilkan. Ia tetap DILAPORKAN di `factors`
+dan di jejak perhitungan supaya pembaca melihat nilainya beserta statusnya, tetapi tidak
+mengalikan apa pun sampai kalibrasi (temperature scaling, lihat docs/LIMITATIONS.md) selesai
+dan `confidence_calibrated` bernilai True.
 """
 
 from __future__ import annotations
@@ -81,7 +90,8 @@ def _notable_factors(factors: dict[str, float]) -> list[str]:
     anti-generik (bagian 22.3).
 
     `confidence_norm` sengaja tidak pernah disebut: keyakinan model bukan alasan bisnis untuk
-    memprioritaskan sesuatu, ia hanya penjaga agar prediksi lemah tidak naik ke atas.
+    memprioritaskan sesuatu - dan sejak dikeluarkan dari rumus ia memang tidak memengaruhi
+    skor sama sekali.
     """
     return [
         label
@@ -126,7 +136,8 @@ def calculate_priority_score(
     if benchmark is not None and not benchmark.preliminary:
         benchmark_gap_norm = max(0.0, min(benchmark.gap / BENCHMARK_GAP_SCALE, 1.0))
 
-    core = frequency_norm * severity_norm * confidence_norm
+    # confidence_norm sengaja TIDAK ikut dikalikan - lihat docstring modul.
+    core = frequency_norm * severity_norm
     modifier = 1.0 + w_recency * recency_norm + w_benchmark * benchmark_gap_norm
     score = round(min(core * modifier * 100.0, 100.0), 2)
 

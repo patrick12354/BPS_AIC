@@ -48,14 +48,17 @@ from .priority import (
 MAX_TRACE_CLAUSES = 12
 
 FORMULA = (
-    "skor = frekuensi x keparahan x keyakinan x "
+    "skor = frekuensi x keparahan x "
     f"(1 + {DEFAULT_W_RECENCY} x tren + {DEFAULT_W_BENCHMARK} x selisih_baseline) x 100"
 )
 
+# Peran "dilaporkan, tidak dikalikan" ada supaya keyakinan model tetap terlihat di jejak -
+# berikut statusnya - tanpa berpura-pura menjadi bagian rumus. Menghapusnya dari daftar akan
+# membuat pembaca bertanya ke mana angka itu pergi; menyebutnya pengali inti adalah kebohongan.
 _LABEL = {
     "frequency_norm": ("Frekuensi", "pengali inti"),
     "severity_norm": ("Keparahan", "pengali inti"),
-    "confidence_norm": ("Keyakinan model", "pengali inti"),
+    "confidence_norm": ("Keyakinan model", "dilaporkan, tidak dikalikan"),
     "recency_norm": ("Tren 30 hari", "modifier"),
     "benchmark_gap_norm": ("Selisih baseline", "modifier"),
 }
@@ -86,9 +89,9 @@ def _explain(
                 "(temperature scaling, ECE dilaporkan di MODEL_CARD)"
             )
         return (
-            "rata-rata keyakinan prediksi klausa. Nilai ini BELUM terkalibrasi (lihat "
-            "docs/LIMITATIONS.md) - ia konstan untuk seluruh aspek, sehingga tidak mengubah "
-            "urutan kartu"
+            "rata-rata probabilitas softmax klausa pendukung. Nilai ini BELUM terkalibrasi "
+            "(lihat docs/LIMITATIONS.md), karena itu TIDAK ikut dikalikan ke dalam skor - "
+            "ia ditampilkan di sini hanya supaya statusnya terlihat, bukan sebagai faktor"
         )
     if key == "recency_norm":
         return f"tren keluhan '{aggregate.trend.value}' dalam 30 hari terakhir"
@@ -164,7 +167,6 @@ def build_action_trace(
     core = (
         priority.factors.get("frequency_norm", 0.0)
         * priority.factors.get("severity_norm", 0.0)
-        * priority.factors.get("confidence_norm", 0.0)
     )
     modifier = (
         1.0

@@ -73,7 +73,8 @@ def test_komponen_jejak_dapat_dihitung_ulang_menjadi_skornya():
     """Inti fiturnya: pembaca skeptis menghitung sendiri dan sampai ke angka yang sama."""
     trace, priority = _trace(aggregate=_agg(trend=Trend.MENINGKAT))
     nilai = {f.key: f.value for f in trace.factors}
-    core = nilai["frequency_norm"] * nilai["severity_norm"] * nilai["confidence_norm"]
+    # Keyakinan model dilaporkan tetapi TIDAK dikalikan - lihat priority.py.
+    core = nilai["frequency_norm"] * nilai["severity_norm"]
     modifier = (
         1.0
         + DEFAULT_W_RECENCY * nilai["recency_norm"]
