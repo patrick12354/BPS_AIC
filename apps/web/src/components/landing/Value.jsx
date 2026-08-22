@@ -233,7 +233,10 @@ export function Value() {
           mereka sudah tergerus <b>15-20%</b> biaya platform sebelum satu rupiah masuk kantong.
           Ketika keluhan yang sama berulang tanpa terdeteksi, kerugiannya dua kali: penjualan
           yang hilang, dan biaya iklan yang dibakar untuk mendatangkan pembeli ke masalah yang
-          belum diperbaiki.
+          belum diperbaiki. Dan membalasnya ada harganya: penjual yang rutin membalas ulasan
+          menerima lebih banyak ulasan dan rating yang lebih tinggi - terukur pada puluhan ribu
+          ulasan (Proserpio &amp; Zervas, <i>Marketing Science</i> 2017) - tetapi membalas satu
+          per satu adalah pekerjaan yang tidak sempat dikerjakan siapa pun.
         </p>
       </div>
 
