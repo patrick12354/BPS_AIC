@@ -1,0 +1,309 @@
+/* ================================================================================
+ * GERAK - dimuat paling akhir, hanya menambah, tidak mendefinisikan ulang tata letak.
+ *
+ * Satu prinsip: gerak menjelaskan hubungan, bukan menghias. Hero masuk berurutan (baca dari
+ * atas ke bawah), ponsel mengambang pelan (ini benda, bukan gambar), kartu ulasan muncul
+ * satu-satu lalu bernapas (ulasan datang terus), pita marketplace bergulir (banyak sumber),
+ * bagian di bawah lipatan muncul saat digulir (bukan serentak saat halaman dimuat), dan di
+ * layar kerja hanya yang punya tindakan yang bergerak saat disentuh.
+ *
+ * Entrance memakai properti individual `translate` / `scale`, BUKAN `transform`: kelas posisi
+ * .fcard dan .spill sudah memakai `transform: rotate(...)`, dan animasi pada `transform` akan
+ * menimpa rotasinya. Properti individual digabungkan, tidak saling menimpa. Pengecualiannya
+ * .phone, yang keyframe-nya memang menulis ulang translateX(-50%) pemusat di tiap langkah.
+ *
+ * prefers-reduced-motion ditangani global di tokens.css (durasi 0.01ms, iterasi 1) - semua
+ * animasi di sini otomatis diam untuk pengguna yang memintanya, termasuk yang infinite.
+ * ============================================================================= */
+
+/* ---------- Halaman pemasaran: hero ---------- */
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.hero .eyebrow,
+.hero h1,
+.hero .sub,
+.hero .cta-row {
+  animation: hero-in 640ms var(--ease-emphasis) both;
+}
+.hero h1 {
+  animation-delay: 90ms;
+}
+.hero .sub {
+  animation-delay: 190ms;
+}
+.hero .cta-row {
+  animation-delay: 290ms;
+}
+
+/* Titik denyut pada eyebrow: sistem ini hidup. */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(47, 123, 246, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(47, 123, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 123, 246, 0);
+  }
+}
+.pulse {
+  animation: pulse-ring 2.2s var(--ease-out) infinite;
+}
+
+/* Ponsel: masuk dari bawah, lalu mengambang pelan. */
+@keyframes phone-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+@keyframes phone-float {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-9px);
+  }
+}
+.phone {
+  animation:
+    phone-in 760ms 180ms var(--ease-emphasis) both,
+    phone-float 6.5s 1000ms ease-in-out infinite;
+}
+
+/* Bilah masalah di layar ponsel tumbuh dari kiri setelah ponselnya tiba - datanya dihitung,
+ * bukan sudah ada. */
+@keyframes fill-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.phone .fill {
+  transform-origin: left center;
+  animation: fill-grow 900ms 900ms var(--ease-emphasis) both;
+}
+.phone .bar-row:nth-child(3) .fill {
+  animation-delay: 1020ms;
+}
+.phone .bar-row:nth-child(4) .fill {
+  animation-delay: 1140ms;
+}
+
+/* Kartu ulasan mengambang: muncul berurutan, lalu bernapas dengan fase berbeda supaya tidak
+ * terlihat seperti satu benda yang digoyang bersama. */
+@keyframes fcard-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes fcard-breathe {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+.fcard {
+  animation:
+    fcard-in 620ms var(--ease-emphasis) both,
+    fcard-breathe 7s ease-in-out infinite;
+}
+.fcard:nth-child(1) {
+  animation-delay: 520ms, 1400ms;
+}
+.fcard:nth-child(2) {
+  animation-delay: 640ms, 2100ms;
+}
+.fcard:nth-child(3) {
+  animation-delay: 760ms, 2800ms;
+}
+.fcard:nth-child(4) {
+  animation-delay: 880ms, 3500ms;
+}
+.fcard:nth-child(5) {
+  animation-delay: 1000ms, 4200ms;
+}
+.fcard:nth-child(6) {
+  animation-delay: 1120ms, 4900ms;
+}
+.fcard:hover {
+  animation-play-state: paused;
+}
+
+/* Label lepas (spill): pop kecil setelah ponsel tiba. */
+@keyframes spill-pop {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+.spill {
+  animation: spill-pop 480ms var(--ease-emphasis) both;
+}
+.spill--blue {
+  animation-delay: 1100ms;
+}
+.spill--dark {
+  animation-delay: 1250ms;
+}
+.spill--glass {
+  animation-delay: 1400ms;
+}
+
+/* ---------- Pita marketplace bergulir ----------
+ * Rel menutup luapan, isinya dua salinan daftar; geseran -50% tepat sepanjang satu salinan
+ * sehingga loop-nya mulus. Berhenti saat disentuh kursor supaya bisa dibaca. */
+.band-rail {
+  overflow: hidden;
+  flex: 1 1 360px;
+  min-width: 0;
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+@keyframes band-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.band-rail .band-logos {
+  flex-wrap: nowrap;
+  width: max-content;
+  gap: 40px;
+  padding-right: 40px;
+  animation: band-scroll 28s linear infinite;
+}
+.band-rail:hover .band-logos {
+  animation-play-state: paused;
+}
+
+/* ---------- Bagian di bawah lipatan: muncul saat digulir masuk ----------
+ * Scroll-driven animation, tanpa JS. Peramban yang belum mendukung animation-timeline
+ * melewati blok ini dan semuanya tampil statis seperti sebelumnya: progresif, bukan prasyarat. */
+@supports (animation-timeline: view()) {
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      translate: 0 22px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+  .section-head,
+  .fitem,
+  .value > *,
+  .banding {
+    animation: rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 38%;
+  }
+  .fitem:nth-child(2) {
+    animation-range: entry 6% entry 44%;
+  }
+  .fitem:nth-child(3) {
+    animation-range: entry 12% entry 50%;
+  }
+  .lap__bagian {
+    animation: rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+/* Kartu fitur: terangkat sedikit saat disentuh - yang bisa dibaca lebih dekat terasa bisa
+ * didekati. */
+.fitem {
+  transition:
+    transform var(--motion-state) var(--ease-out),
+    box-shadow var(--motion-state) var(--ease-out);
+}
+.fitem:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow), var(--highlight);
+}
+
+/* ---------- Layar kerja: sedikit, dan hanya yang memberi tahu sesuatu ---------- */
+
+/* Kartu aksi sudah masuk berurutan (.reveal). Saat disentuh ia terangkat - kartu ini punya
+ * tindakan (draf balasan, jejak, keputusan), jadi harus terasa bisa dipegang. */
+.acard {
+  transition:
+    transform var(--motion-state) var(--ease-out),
+    box-shadow var(--motion-state) var(--ease-out);
+}
+.acard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+/* Tombol utama: menekan terasa menekan. */
+.btn--primary {
+  transition:
+    transform 120ms var(--ease-out),
+    box-shadow var(--motion-state) var(--ease-out),
+    background var(--motion-state) var(--ease-out);
+}
+.btn--primary:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+/* Deretan angka kepala laporan masuk satu-satu dari kiri ke kanan - urutan bacanya memang
+ * begitu: jumlah ulasan dulu, baru angka-angka yang ditimbang olehnya. */
+@keyframes angka-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.ringkas__angka .angka {
+  animation: angka-in var(--motion-reveal) var(--ease-emphasis) both;
+}
+.ringkas__angka .angka:nth-child(2) {
+  animation-delay: 70ms;
+}
+.ringkas__angka .angka:nth-child(3) {
+  animation-delay: 140ms;
+}
+.ringkas__angka .angka:nth-child(4) {
+  animation-delay: 210ms;
+}
+.ringkas__angka .angka:nth-child(5) {
+  animation-delay: 280ms;
+}

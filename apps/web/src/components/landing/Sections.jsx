@@ -3,20 +3,28 @@
 /** Teks referensi Stitch berbunyi "Terhubung dengan ulasan dari semua marketplace besar" -
  *  itu menjanjikan integrasi langsung yang TIDAK dimiliki versi ini, jadi kalimatnya diganti
  *  menjadi jalur yang benar-benar didukung: berkas ekspor dan tangkapan layar. */
+const MARKETPLACES = ["Tokopedia", "Shopee", "TikTok Shop", "Lazada", "Bukalapak", "Google Reviews"];
+
 export function MarketplaceBand() {
+  // Daftar dirender dua kali supaya pita bisa bergulir tanpa celah: salinan kedua masuk saat
+  // yang pertama keluar. Salinan itu disembunyikan dari pembaca layar - isinya sama persis.
   return (
     <div className="band">
       <div className="band-inner">
         <span className="lbl">
           Bekerja dari berkas ekspor maupun tangkapan layar ulasan marketplace besar
         </span>
-        <div className="band-logos">
-          <b>Tokopedia</b>
-          <b>Shopee</b>
-          <b>TikTok Shop</b>
-          <b>Lazada</b>
-          <b>Bukalapak</b>
-          <b>Google Reviews</b>
+        <div className="band-rail" aria-label="Tokopedia, Shopee, TikTok Shop, Lazada, Bukalapak, Google Reviews">
+          <div className="band-logos">
+            {MARKETPLACES.map((m) => (
+              <b key={m}>{m}</b>
+            ))}
+            {MARKETPLACES.map((m) => (
+              <b key={`${m}-2`} aria-hidden="true">
+                {m}
+              </b>
+            ))}
+          </div>
         </div>
       </div>
     </div>

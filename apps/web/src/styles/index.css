@@ -8,3 +8,6 @@
 /* Terakhir: laporan memakai primitif dari `dashboard.css` (.panel, .mtable, .equote) dan
    sesekali menimpanya untuk konteksnya sendiri. */
 @import "./report.css";
+/* Paling akhir: gerak hanya menambah animasi/transisi pada kelas yang sudah ada, tidak
+   mendefinisikan ulang tata letak. Dimuat terakhir supaya delay dan keyframe-nya menang. */
+@import "./motion.css";
