@@ -167,7 +167,10 @@ def test_tanpa_orchestrator_sistem_tetap_menghasilkan_data_lengkap(service):
     """ADR-014: yang berbeda hanya lapisan narasi, bukan datanya."""
     result = service.analyze(_batch(), now=NOW)
     assert result.mode == AnalysisMode.FALLBACK
-    assert "mode_sederhana" in result.warnings
+    # Jalur narasi template adalah jalur normal (ADR-014) - bukan peringatan. `mode` tetap
+    # tercatat untuk audit, tetapi daftar peringatan tidak boleh menyebut keadaan normal.
+    assert "mode_sederhana" not in result.warnings
+    assert result.mode.value == "fallback"
     assert result.top_actions and result.aspect_aggregates
     assert result.summary.executive_summary_text
 

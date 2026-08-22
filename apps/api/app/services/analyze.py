@@ -451,8 +451,12 @@ class AnalyzeService:
             pii_redacted=pre.pii_redacted_count,
         )
 
-        if mode == AnalysisMode.FALLBACK:
-            warnings.append("mode_sederhana")
+        # `mode` tetap dilaporkan di payload untuk audit, tetapi TIDAK lagi menjadi peringatan.
+        # Orchestrator LLM memang tidak diintegrasikan (ADR-014): narasi template deterministik
+        # adalah jalur yang DIRANCANG, bukan keadaan terdegradasi - dan kalimat "mode sederhana
+        # aktif" yang tampil di setiap hasil membuat sistem yang sepenuhnya normal terbaca
+        # seolah sedang rusak. Peringatan disediakan untuk hal yang memang menyimpang dari
+        # normal; jalur normal bukan salah satunya.
 
         # Dihitung per ulasan, bukan per sebutan - lihat catatan di AnalysisSummary.
         reviews_with_complaint = sum(

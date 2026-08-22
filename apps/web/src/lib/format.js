@@ -38,8 +38,9 @@ export const WARNING_TEXT = {
   baris_dilewati: "Sebagian baris dilewati karena kosong atau terduplikasi.",
   pii_diredaksi:
     "Nomor telepon dan data pribadi yang ditemukan sudah disamarkan sebelum dianalisis.",
-  mode_sederhana:
-    "Mode sederhana aktif - sebagian penjelasan memakai teks standar. Seluruh angka dan bukti tetap lengkap.",
+  // Tidak lagi dikirim backend sejak narasi template diakui sebagai jalur normal; entri
+  // dipertahankan agar payload dari versi lama tetap punya teks, dengan kalimat yang netral.
+  mode_sederhana: "Narasi disusun dari template deterministik. Seluruh angka dan bukti lengkap.",
   data_kosong: "Tidak ada ulasan yang dapat dianalisis dari data ini.",
 };
 
