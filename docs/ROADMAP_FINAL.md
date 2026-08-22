@@ -26,7 +26,27 @@ lalu membandingkan leksikon / TF-IDF / IndoBERT / label gold-LLM pada rujukan ma
 **Ukuran berhasil.** Kappa gabungan >= 0,6 (kesepakatan "substansial"); F1 aspek per pendekatan
 dilaporkan apa adanya di MODEL_CARD §3.3b - termasuk bila IndoBERT tetap tidak unggul.
 
-**Usaha.** Dua orang x satu sore pelabelan + 30 menit adjudikasi.
+**Status: SELESAI 22 Agustus 2026** (susunan LLM + manusia, 120 klausa, kappa 0,68). Hasilnya:
+IndoBERT 0,579 ≈ leksikon 0,581 - tidak unggul, dan gold ADR-017 bukan penyebabnya (0,704
+terhadap manusia). Temuan ini melahirkan L0' di bawah.
+
+## L0' - Latih ulang kepala aspek pada label gold + manusia (distilasi, bukan leksikon)
+
+**Masalah.** L0 membuktikan kepala aspek hanya memulihkan leksikon karena seluruh label latihnya
+berasal dari leksikon. Pembacaan semantik (gold-LLM 0,704; LLM zero-shot 0,660) jelas lebih dekat
+ke manusia. Memanggil LLM saat inferensi melanggar ADR-001; yang konsisten adalah memindahkan
+pengetahuannya ke model lokal lewat label latih.
+
+**Spesifikasi.** (1) Perluas label berkualitas: gold 500 + 120 manusia + pra-anotasi LLM pada
+2-3 ribu klausa tambahan yang diadjudikasi manusia pada sampel kontrol (pola ADR-017, dengan
+kontrol yang kini terbukti perlu: "yakin" LLM hanya 53% cocok). (2) Latih ulang hanya
+`aspect_head` di atas encoder beku (murah, menit di CPU) - lalu, bila membaik, fine-tune penuh.
+(3) Ukur pada 120 klausa manusia yang SAMA, yang tidak pernah ikut latih.
+
+**Ukuran berhasil.** Macro F1 aspek pada 120 klausa manusia naik terukur di atas leksikon
+(0,581), khususnya ukuran_varian dan kualitas_produk. Bila tidak naik, tulis; itu pun informasi.
+
+**Usaha.** 1-2 hari; pelabelan kontrol 1 orang x 2 jam.
 
 ## L1 - Kalibrasi keyakinan (temperature scaling)
 

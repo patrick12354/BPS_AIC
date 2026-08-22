@@ -615,10 +615,10 @@ Status validasi per kepala model, apa adanya:
 | Kepala | Penengah | Hasil | Status |
 | --- | --- | --- | --- |
 | **Sentimen** | Label manusia independen (NusaX-senti, PRDECT-ID) | IndoBERT **0,730** vs leksikon 0,700 vs TF-IDF 0,627; netral 0,021 → 0,645 | **Tervalidasi** |
-| **Aspek** | Gold 500 klausa dari pra-anotasi LLM yang ditinjau tim (ADR-017) | IndoBERT 0,766 **setara** leksikon 0,770 | **Belum tervalidasi manusia independen** - dan selisih arahnya dengan sentimen justru mencurigakan: bisa modelnya, bisa gold-nya |
-| Aspek, langkah berikutnya | Dua pelabel manusia independen + adjudikator, Cohen's kappa per aspek | Paket siap: `python scripts/build_aspect_human_pack.py` → label → `python ml/text/evaluate_aspect_human.py` | Berjalan - hasilnya akan ditulis ke MODEL_CARD §3.3b **apa pun arahnya** |
+| **Aspek** | Gold 500 klausa dari pra-anotasi LLM yang ditinjau tim (ADR-017) | IndoBERT 0,766 **setara** leksikon 0,770 | Tidak lulus - tetapi gold-nya sendiri masih bisa dicurigai |
+| **Aspek, divalidasi manusia** | 120 klausa berlabel manusia (pelabel independen; pembanding LLM dengan kappa 0,68) | IndoBERT **0,579** ≈ leksikon 0,581 ≈ TF-IDF 0,585; gold ADR-017 sendiri 0,704 terhadap manusia | **TIDAK LULUS, terkonfirmasi** - bukan karena gold. Titik terlemah spesifik: ukuran_varian 0,17, kualitas_produk 0,57. Rincian MODEL_CARD §3.3b |
 
-Baris terakhir adalah satu-satunya klaim model yang masih terbuka, dan perangkatnya sudah ada di repositori sehingga siapa pun - termasuk juri - dapat menjalankannya.
+Satu temuan tambahan yang tidak nyaman dan karena itu ditulis: pembacaan LLM zero-shot mencapai 0,660 pada aspek - **lebih baik dari model fine-tuned**. Produk ini sengaja tidak memanggil LLM saat inferensi (ADR-001), jadi jalan keluarnya adalah melatih ulang kepala aspek pada label gold + manusia ([ROADMAP_FINAL.md](docs/ROADMAP_FINAL.md) L0'). Seluruh perangkat validasinya ada di repositori: `scripts/build_aspect_human_pack.py` → `ml/text/evaluate_aspect_human.py`.
 
 Rencana evaluasi penuh mencakup delapan baseline pembanding, ablation per lapisan, metrik retrieval, dan penilaian kualitatif rekomendasi. Rinciannya di [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 

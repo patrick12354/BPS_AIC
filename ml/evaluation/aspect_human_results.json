@@ -1,0 +1,556 @@
+{
+  "setup": "llm_plus_human",
+  "provenance": "SUSUNAN LLM + MANUSIA. Pelabel A = LLM (scripts/_llm_aspect_labels_A.py) dengan bendera RAGU/yakin; pelabel B = manusia pada subset (seluruh baris RAGU + sampel kontrol acak dari baris yakin). RUJUKAN = label manusia saja; label LLM dilaporkan sebagai pendekatan 'llm_annotator_a', bukan sebagai kebenaran. Lebih lemah daripada dua manusia independen dan harus disebut demikian.",
+  "kappa_floor": 0.4,
+  "agreement": {
+    "n_both": 120,
+    "per_aspect": {
+      "kualitas_produk": {
+        "kappa": 0.6147,
+        "support_A": 45,
+        "support_B": 38,
+        "interpretable": true
+      },
+      "kesesuaian_deskripsi": {
+        "kappa": 0.5464,
+        "support_A": 14,
+        "support_B": 22,
+        "interpretable": true
+      },
+      "harga_value": {
+        "kappa": 0.9138,
+        "support_A": 14,
+        "support_B": 12,
+        "interpretable": true
+      },
+      "ukuran_varian": {
+        "kappa": 0.5,
+        "support_A": 20,
+        "support_B": 9,
+        "interpretable": true
+      },
+      "rasa_kualitas_makanan": {
+        "kappa": 0.9048,
+        "support_A": 5,
+        "support_B": 6,
+        "interpretable": true
+      },
+      "kemasan": {
+        "kappa": 0.8661,
+        "support_A": 8,
+        "support_B": 8,
+        "interpretable": true
+      },
+      "pengiriman": {
+        "kappa": 0.7224,
+        "support_A": 13,
+        "support_B": 11,
+        "interpretable": true
+      },
+      "pelayanan_penjual": {
+        "kappa": 0.7241,
+        "support_A": 15,
+        "support_B": 9,
+        "interpretable": true
+      },
+      "kelengkapan": {
+        "kappa": 0.2389,
+        "support_A": 7,
+        "support_B": 1,
+        "interpretable": false
+      },
+      "keaslian": {
+        "kappa": 0.8799,
+        "support_A": 9,
+        "support_B": 9,
+        "interpretable": true
+      },
+      "kemudahan_penggunaan": {
+        "kappa": -0.0294,
+        "support_A": 3,
+        "support_B": 4,
+        "interpretable": false
+      }
+    },
+    "pooled_kappa": 0.6827,
+    "exact_row_agreement": 0.525
+  },
+  "control_audit": {
+    "n_control_yakin": 60,
+    "exact_agreement_yakin": 32,
+    "rate_yakin": 0.5333,
+    "ci95_yakin": [
+      0.4089,
+      0.6537
+    ],
+    "n_ragu": 60,
+    "exact_agreement_ragu": 31,
+    "rate_ragu": 0.5167
+  },
+  "n_pending_adjudication": 0,
+  "evaluation": {
+    "n_reference": 120,
+    "models": {
+      "lexicon_rule_based": {
+        "aspect_macro_f1": 0.5812,
+        "aspect_micro_f1": 0.6196,
+        "per_class": {
+          "kualitas_produk": {
+            "f1": 0.5902,
+            "support": 38
+          },
+          "kesesuaian_deskripsi": {
+            "f1": 0.6222,
+            "support": 22
+          },
+          "harga_value": {
+            "f1": 0.8462,
+            "support": 12
+          },
+          "ukuran_varian": {
+            "f1": 0.1739,
+            "support": 9
+          },
+          "rasa_kualitas_makanan": {
+            "f1": 0.8,
+            "support": 6
+          },
+          "kemasan": {
+            "f1": 0.8889,
+            "support": 8
+          },
+          "pengiriman": {
+            "f1": 0.6667,
+            "support": 11
+          },
+          "pelayanan_penjual": {
+            "f1": 0.6667,
+            "support": 9
+          },
+          "kelengkapan": {
+            "f1": 0.25,
+            "support": 1
+          },
+          "keaslian": {
+            "f1": 0.8889,
+            "support": 9
+          },
+          "kemudahan_penggunaan": {
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "n": 120,
+        "on_gold_subset": {
+          "aspect_macro_f1": 0.5813,
+          "aspect_micro_f1": 0.627,
+          "per_class": {
+            "kualitas_produk": {
+              "f1": 0.3529,
+              "support": 24
+            },
+            "kesesuaian_deskripsi": {
+              "f1": 0.6667,
+              "support": 11
+            },
+            "harga_value": {
+              "f1": 0.8182,
+              "support": 10
+            },
+            "ukuran_varian": {
+              "f1": 0.2222,
+              "support": 3
+            },
+            "rasa_kualitas_makanan": {
+              "f1": 0.8,
+              "support": 6
+            },
+            "kemasan": {
+              "f1": 0.8889,
+              "support": 8
+            },
+            "pengiriman": {
+              "f1": 0.7273,
+              "support": 11
+            },
+            "pelayanan_penjual": {
+              "f1": 0.7273,
+              "support": 6
+            },
+            "kelengkapan": {
+              "f1": 0.25,
+              "support": 1
+            },
+            "keaslian": {
+              "f1": 0.9412,
+              "support": 8
+            },
+            "kemudahan_penggunaan": {
+              "f1": 0.0,
+              "support": 4
+            }
+          },
+          "n": 89
+        }
+      },
+      "tfidf_logreg": {
+        "aspect_macro_f1": 0.5846,
+        "aspect_micro_f1": 0.5984,
+        "per_class": {
+          "kualitas_produk": {
+            "f1": 0.4561,
+            "support": 38
+          },
+          "kesesuaian_deskripsi": {
+            "f1": 0.5909,
+            "support": 22
+          },
+          "harga_value": {
+            "f1": 0.8462,
+            "support": 12
+          },
+          "ukuran_varian": {
+            "f1": 0.32,
+            "support": 9
+          },
+          "rasa_kualitas_makanan": {
+            "f1": 0.8,
+            "support": 6
+          },
+          "kemasan": {
+            "f1": 0.8889,
+            "support": 8
+          },
+          "pengiriman": {
+            "f1": 0.64,
+            "support": 11
+          },
+          "pelayanan_penjual": {
+            "f1": 0.75,
+            "support": 9
+          },
+          "kelengkapan": {
+            "f1": 0.25,
+            "support": 1
+          },
+          "keaslian": {
+            "f1": 0.8889,
+            "support": 9
+          },
+          "kemudahan_penggunaan": {
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "n": 120,
+        "on_gold_subset": {
+          "aspect_macro_f1": 0.5713,
+          "aspect_micro_f1": 0.6087,
+          "per_class": {
+            "kualitas_produk": {
+              "f1": 0.2424,
+              "support": 24
+            },
+            "kesesuaian_deskripsi": {
+              "f1": 0.6667,
+              "support": 11
+            },
+            "harga_value": {
+              "f1": 0.8182,
+              "support": 10
+            },
+            "ukuran_varian": {
+              "f1": 0.2222,
+              "support": 3
+            },
+            "rasa_kualitas_makanan": {
+              "f1": 0.8,
+              "support": 6
+            },
+            "kemasan": {
+              "f1": 0.8889,
+              "support": 8
+            },
+            "pengiriman": {
+              "f1": 0.7273,
+              "support": 11
+            },
+            "pelayanan_penjual": {
+              "f1": 0.7273,
+              "support": 6
+            },
+            "kelengkapan": {
+              "f1": 0.25,
+              "support": 1
+            },
+            "keaslian": {
+              "f1": 0.9412,
+              "support": 8
+            },
+            "kemudahan_penggunaan": {
+              "f1": 0.0,
+              "support": 4
+            }
+          },
+          "n": 89
+        }
+      },
+      "indobert_finetuned": {
+        "aspect_macro_f1": 0.5791,
+        "aspect_micro_f1": 0.6142,
+        "per_class": {
+          "kualitas_produk": {
+            "f1": 0.5667,
+            "support": 38
+          },
+          "kesesuaian_deskripsi": {
+            "f1": 0.6222,
+            "support": 22
+          },
+          "harga_value": {
+            "f1": 0.8462,
+            "support": 12
+          },
+          "ukuran_varian": {
+            "f1": 0.1739,
+            "support": 9
+          },
+          "rasa_kualitas_makanan": {
+            "f1": 0.8,
+            "support": 6
+          },
+          "kemasan": {
+            "f1": 0.8889,
+            "support": 8
+          },
+          "pengiriman": {
+            "f1": 0.6667,
+            "support": 11
+          },
+          "pelayanan_penjual": {
+            "f1": 0.6667,
+            "support": 9
+          },
+          "kelengkapan": {
+            "f1": 0.25,
+            "support": 1
+          },
+          "keaslian": {
+            "f1": 0.8889,
+            "support": 9
+          },
+          "kemudahan_penggunaan": {
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "n": 120,
+        "on_gold_subset": {
+          "aspect_macro_f1": 0.5813,
+          "aspect_micro_f1": 0.627,
+          "per_class": {
+            "kualitas_produk": {
+              "f1": 0.3529,
+              "support": 24
+            },
+            "kesesuaian_deskripsi": {
+              "f1": 0.6667,
+              "support": 11
+            },
+            "harga_value": {
+              "f1": 0.8182,
+              "support": 10
+            },
+            "ukuran_varian": {
+              "f1": 0.2222,
+              "support": 3
+            },
+            "rasa_kualitas_makanan": {
+              "f1": 0.8,
+              "support": 6
+            },
+            "kemasan": {
+              "f1": 0.8889,
+              "support": 8
+            },
+            "pengiriman": {
+              "f1": 0.7273,
+              "support": 11
+            },
+            "pelayanan_penjual": {
+              "f1": 0.7273,
+              "support": 6
+            },
+            "kelengkapan": {
+              "f1": 0.25,
+              "support": 1
+            },
+            "keaslian": {
+              "f1": 0.9412,
+              "support": 8
+            },
+            "kemudahan_penggunaan": {
+              "f1": 0.0,
+              "support": 4
+            }
+          },
+          "n": 89
+        }
+      },
+      "gold_llm_labels_adr017": {
+        "aspect_macro_f1": 0.7035,
+        "aspect_micro_f1": 0.7339,
+        "per_class": {
+          "kualitas_produk": {
+            "f1": 0.6809,
+            "support": 24
+          },
+          "kesesuaian_deskripsi": {
+            "f1": 0.8,
+            "support": 11
+          },
+          "harga_value": {
+            "f1": 0.8696,
+            "support": 10
+          },
+          "ukuran_varian": {
+            "f1": 0.375,
+            "support": 3
+          },
+          "rasa_kualitas_makanan": {
+            "f1": 1.0,
+            "support": 6
+          },
+          "kemasan": {
+            "f1": 0.8889,
+            "support": 8
+          },
+          "pengiriman": {
+            "f1": 0.8,
+            "support": 11
+          },
+          "pelayanan_penjual": {
+            "f1": 0.8,
+            "support": 6
+          },
+          "kelengkapan": {
+            "f1": 0.25,
+            "support": 1
+          },
+          "keaslian": {
+            "f1": 0.9412,
+            "support": 8
+          },
+          "kemudahan_penggunaan": {
+            "f1": 0.3333,
+            "support": 4
+          }
+        },
+        "n": 89
+      },
+      "llm_annotator_a": {
+        "aspect_macro_f1": 0.6596,
+        "aspect_micro_f1": 0.7163,
+        "per_class": {
+          "kualitas_produk": {
+            "f1": 0.747,
+            "support": 38
+          },
+          "kesesuaian_deskripsi": {
+            "f1": 0.6111,
+            "support": 22
+          },
+          "harga_value": {
+            "f1": 0.9231,
+            "support": 12
+          },
+          "ukuran_varian": {
+            "f1": 0.5517,
+            "support": 9
+          },
+          "rasa_kualitas_makanan": {
+            "f1": 0.9091,
+            "support": 6
+          },
+          "kemasan": {
+            "f1": 0.875,
+            "support": 8
+          },
+          "pengiriman": {
+            "f1": 0.75,
+            "support": 11
+          },
+          "pelayanan_penjual": {
+            "f1": 0.75,
+            "support": 9
+          },
+          "kelengkapan": {
+            "f1": 0.25,
+            "support": 1
+          },
+          "keaslian": {
+            "f1": 0.8889,
+            "support": 9
+          },
+          "kemudahan_penggunaan": {
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "n": 120,
+        "on_gold_subset": {
+          "aspect_macro_f1": 0.6754,
+          "aspect_micro_f1": 0.7291,
+          "per_class": {
+            "kualitas_produk": {
+              "f1": 0.6538,
+              "support": 24
+            },
+            "kesesuaian_deskripsi": {
+              "f1": 0.7273,
+              "support": 11
+            },
+            "harga_value": {
+              "f1": 0.9091,
+              "support": 10
+            },
+            "ukuran_varian": {
+              "f1": 0.5455,
+              "support": 3
+            },
+            "rasa_kualitas_makanan": {
+              "f1": 0.9091,
+              "support": 6
+            },
+            "kemasan": {
+              "f1": 0.875,
+              "support": 8
+            },
+            "pengiriman": {
+              "f1": 0.7826,
+              "support": 11
+            },
+            "pelayanan_penjual": {
+              "f1": 0.8,
+              "support": 6
+            },
+            "kelengkapan": {
+              "f1": 0.2857,
+              "support": 1
+            },
+            "keaslian": {
+              "f1": 0.9412,
+              "support": 8
+            },
+            "kemudahan_penggunaan": {
+              "f1": 0.0,
+              "support": 4
+            }
+          },
+          "n": 89
+        }
+      }
+    },
+    "gold_subset_n": 89
+  }
+}

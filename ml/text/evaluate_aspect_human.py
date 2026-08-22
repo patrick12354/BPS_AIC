@@ -88,7 +88,9 @@ def cohen_kappa(a: np.ndarray, b: np.ndarray) -> float | None:
         # Keduanya memberi label identik untuk seluruh baris - kesepakatan sempurna secara
         # observasi, tetapi kappa tak terdefinisi. Dilaporkan None, bukan 1.0 yang menyesatkan.
         return None
-    return round((po - pe) / (1 - pe), 4)
+    # float() eksplisit: round() atas np.float64 mengembalikan np.float64, dan perbandingan
+    # dengannya menghasilkan np.bool_ yang tidak bisa diserialkan json.
+    return round(float((po - pe) / (1 - pe)), 4)
 
 
 def f1_binary(y: np.ndarray, p: np.ndarray) -> float:
@@ -125,7 +127,7 @@ def agreement(a_rows: dict[str, dict], b_rows: dict[str, dict]) -> dict:
             "kappa": k,
             "support_A": int(A[:, j].sum()) if len(ids) else 0,
             "support_B": int(B[:, j].sum()) if len(ids) else 0,
-            "interpretable": (k is not None and k >= KAPPA_FLOOR),
+            "interpretable": bool(k is not None and k >= KAPPA_FLOOR),
         }
     pooled = cohen_kappa(A.reshape(-1), B.reshape(-1)) if len(ids) else None
     exact = float((A == B).all(axis=1).mean()) if len(ids) else None
@@ -253,6 +255,22 @@ def evaluate(ref: dict[str, np.ndarray], texts: dict[str, str], sources: dict[st
     if llm_rows is not None:
         P = np.array([_labels(llm_rows[i]) for i in ids])
         out["models"]["llm_annotator_a"] = pack(P)
+
+    # Perbandingan APPLE-TO-APPLE: gold-LLM hanya ada untuk klausa asal gold, jadi setiap
+    # pendekatan lain dihitung ulang pada subset yang persis sama. Tanpa ini, angka gold-LLM
+    # pada 89 klausa berdampingan dengan angka model pada 120 klausa - dan selisihnya bisa
+    # berasal dari bedanya klausa, bukan bedanya pendekatan.
+    if gold_ids:
+        out["gold_subset_n"] = len(gold_ids)
+        preds = {"lexicon_rule_based": predict_lexicon(T)[0]}
+        if train_path.exists():
+            preds["tfidf_logreg"] = predict_tfidf(train, T)[0]
+        if res is not None:
+            preds["indobert_finetuned"] = res[0]
+        if llm_rows is not None:
+            preds["llm_annotator_a"] = np.array([_labels(llm_rows[i]) for i in ids])
+        for name, P in preds.items():
+            out["models"][name]["on_gold_subset"] = pack(P, gold_ids)
     return out
 
 

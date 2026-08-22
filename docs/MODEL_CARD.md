@@ -274,9 +274,63 @@ gold-LLM / LLM-anotator, dan (2) taksiran terukur tentang apakah 80 baris "yakin
 diperiksa manusia layak dipercaya. Bila tim punya waktu, jalan yang lebih kuat tetap terbuka:
 pelabel B melabeli 200 baris penuh, dan skrip yang sama menghitung ulang tanpa perubahan.
 
-**Status saat kartu ini ditulis: label LLM selesai, pelabelan manusia belum.** Begitu selesai,
-tabel hasilnya ditempel di sini apa pun arahnya - termasuk bila IndoBERT tetap tidak unggul.
-Sampai saat itu, klaim aspek tetap seperti di §4.3: **TIDAK LULUS**.
+#### Hasil (22 Agustus 2026) - `ml/evaluation/aspect_human_results.json`
+
+Pelabel manusia menyelesaikan 120 klausa. Kesepakatan LLM↔manusia: **kappa gabungan 0,683**
+(substansial), kesepakatan baris persis 52,5%. Aspek `kelengkapan` (kappa 0,24) dan
+`kemudahan_penggunaan` (kappa −0,03, n=4) **tidak ditafsirkan** - dua manusia pun belum tentu
+sepakat di sana, apalagi model.
+
+**Kontrol menjawab pertanyaan pertama dengan tegas:** dari 60 baris yang LLM "yakin", hanya
+**32 (53%, CI95 41–65%)** yang cocok persis dengan manusia. Label LLM yang yakin pun tidak layak
+menjadi rujukan - keputusan memakai label manusia saja sebagai rujukan terbukti perlu, bukan
+formalitas.
+
+**Angka utama - F1 aspek pada 120 klausa berlabel manusia:**
+
+| Pendekatan | Macro F1 | Micro F1 | Pada 89 klausa asal gold (apple-to-apple) |
+| --- | --- | --- | --- |
+| Leksikon rule-based | 0,581 | 0,620 | 0,581 / 0,627 |
+| TF-IDF + LR | 0,585 | 0,598 | 0,571 / 0,609 |
+| **IndoBERT fine-tuned** | **0,579** | **0,614** | 0,581 / 0,627 |
+| Label gold-LLM ADR-017 | - | - | **0,704 / 0,734** |
+| LLM anotator (Claude, zero-shot, pelabel A) | 0,660 | 0,716 | 0,675 / 0,729 |
+
+**Tafsirnya, apa adanya - dan ia menutup pertanyaan §3.3:**
+
+1. **IndoBERT tidak unggul pada aspek, pada label manusia sekalipun** (0,579 vs 0,581 vs 0,585 -
+   ketiganya di dalam noise satu sama lain). Tafsir (a) terkonfirmasi; ini bukan artefak gold.
+2. **Gold ADR-017 bukan masalahnya.** Pada 89 klausa yang sama, label gold mencapai 0,704
+   terhadap manusia - lebih dekat ke manusia daripada model mana pun. Gold itu cukup baik;
+   modelnya yang tidak pernah punya sumber untuk melampaui leksikon (§4.3 sudah mengatakan ini,
+   sekarang dengan bukti di luar gold).
+3. **Pembacaan LLM zero-shot (0,660) mengalahkan model fine-tuned (0,579)** pada aspek. Ini fakta
+   yang tidak nyaman untuk ADR-001 (local-first, tanpa API) dan karena itu harus ditulis: untuk
+   aspek, pembacaan semantik saat ini lebih baik daripada kepala aspek yang dilatih dari label
+   leksikon. Jalan keluar yang konsisten dengan ADR-001 bukan memanggil API saat inferensi,
+   melainkan **melatih ulang kepala aspek pada label gold + manusia (distilasi)** - tercatat
+   sebagai L0' di `docs/ROADMAP_FINAL.md`.
+4. **Per aspek, ketiga model konvensional identik di sebagian besar baris** (harga 0,846,
+   kemasan 0,889, keaslian 0,889, rasa 0,800) - model memang memulihkan leksikon. Titik
+   terlemahnya nyata dan spesifik: **ukuran_varian 0,174** (n=9) dan **kualitas_produk 0,567**
+   (n=38) - dua aspek yang paling sering muncul di ulasan fesyen, yaitu kategori demo utama.
+
+| Aspek (kappa ≥ 0,40) | Leksikon | TF-IDF | IndoBERT | LLM anotator | n manusia |
+| --- | --- | --- | --- | --- | --- |
+| kualitas_produk | 0,590 | 0,456 | 0,567 | 0,747 | 38 |
+| kesesuaian_deskripsi | 0,622 | 0,591 | 0,622 | 0,611 | 22 |
+| harga_value | 0,846 | 0,846 | 0,846 | 0,923 | 12 |
+| ukuran_varian | **0,174** | 0,320 | **0,174** | 0,552 | 9 |
+| rasa_kualitas_makanan | 0,800 | 0,800 | 0,800 | 0,909 | 6 |
+| kemasan | 0,889 | 0,889 | 0,889 | 0,875 | 8 |
+| pengiriman | 0,667 | 0,640 | 0,667 | 0,750 | 11 |
+| pelayanan_penjual | 0,667 | 0,750 | 0,667 | 0,750 | 9 |
+| keaslian | 0,889 | 0,889 | 0,889 | 0,889 | 9 |
+
+**Batas angka ini:** 120 klausa, satu pelabel manusia (bukan dua), dan n per aspek kecil (6–38)
+- selang kepercayaan per aspek lebar. Yang cukup kuat untuk disimpulkan hanya dua hal: IndoBERT
+tidak mengungguli leksikon pada aspek, dan gold ADR-017 bukan penyebabnya. Klaim aspek tetap
+**TIDAK LULUS** (§4.3), kini dengan dasar yang lebih kuat daripada sebelumnya.
 
 ### 3.4 Evaluasi pada dataset berlabel MANUSIA yang sudah ada - tanpa anotasi tambahan
 
@@ -402,7 +456,7 @@ atau menaikkan bobot kelasnya) belum dikerjakan dan tercatat sebagai pekerjaan F
 | Task | Verdict | Dasar |
 | --- | --- | --- |
 | **Sentimen** | **LULUS** | Pada data berlabel expert 3 kelas, IndoBERT 0,730 mengungguli leksikon 0,700 dan TF-IDF 0,627; kelas netral pulih dari 0,021 ke 0,645 |
-| **Aspek** | **TIDAK LULUS** | Pada gold, IndoBERT 0,766 masih setara leksikon 0,770 |
+| **Aspek** | **TIDAK LULUS** | Pada gold, IndoBERT 0,766 setara leksikon 0,770; **dikonfirmasi pada 120 klausa berlabel manusia** (§3.3b): 0,579 vs 0,581 vs TF-IDF 0,585 - dan gold bukan penyebabnya (gold 0,704 terhadap manusia) |
 
 Aspek tidak lulus bukan karena kurang usaha, melainkan karena **secara struktural tidak bisa**:
 label aspeknya 100% keluaran leksikon, sehingga model tidak punya sumber informasi untuk
