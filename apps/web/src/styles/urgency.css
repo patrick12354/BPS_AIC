@@ -1,0 +1,242 @@
+/* Bagian "Kenapa sekarang" - fakta bersumber dalam pola cerita-utama + tiga kartu.
+ * Hanya memakai token yang sudah ada; tidak mendefinisikan warna baru. */
+
+.urgensi {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--space-18) var(--gutter) 64px;
+}
+.urgensi__head {
+  text-align: center;
+  margin-bottom: 34px;
+}
+.urgensi__head p {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+
+/* Cerita utama: visual kiri, teks kanan - satu kolom di layar sempit. */
+.urgensi__utama {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm), var(--highlight);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+:root[data-theme="dark"] .urgensi__utama,
+:root[data-theme="dark"] .urgensi__kartu,
+:root[data-theme="dark"] .urgensi__skala li {
+  background: var(--glass);
+  border-color: var(--glass-edge);
+}
+@media (min-width: 900px) {
+  .urgensi__utama {
+    grid-template-columns: 5fr 7fr;
+  }
+}
+.urgensi__utama-visual {
+  padding: 28px 26px;
+  background: var(--blue-tint);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+:root[data-theme="dark"] .urgensi__utama-visual {
+  background: rgba(47, 123, 246, 0.14);
+}
+.urgensi__bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.urgensi__bar-row i {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--blue-light), var(--blue));
+  width: var(--w);
+  transform-origin: left center;
+}
+.urgensi__bar-row b {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--ink);
+}
+.urgensi__utama-visual small {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.urgensi__utama-teks {
+  padding: 30px 32px 28px;
+}
+.urgensi__utama-teks h3 {
+  font-size: clamp(20px, 2.4vw, 27px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  margin: 12px 0 12px;
+  text-wrap: balance;
+}
+.urgensi__utama-teks p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}
+
+.urgensi__chip {
+  display: inline-block;
+  font-size: var(--text-caps);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--blue-dark);
+  background: var(--blue-tint);
+  border-radius: 6px;
+  padding: 5px 9px;
+}
+:root[data-theme="dark"] .urgensi__chip {
+  color: var(--blue-light);
+  background: rgba(47, 123, 246, 0.18);
+}
+.urgensi__meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.urgensi__baca {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--band);
+  color: var(--ink-soft);
+}
+
+/* Tiga kartu ringkas */
+.urgensi__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.urgensi__kartu {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: var(--r-xl);
+  padding: 20px 20px 18px;
+  box-shadow: var(--shadow-sm), var(--highlight);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition:
+    transform var(--motion-state) var(--ease-out),
+    box-shadow var(--motion-state) var(--ease-out);
+}
+.urgensi__kartu:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow), var(--highlight);
+}
+.urgensi__kartu h3 {
+  font-size: 16.5px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.urgensi__kartu p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+  flex: 1;
+}
+.urgensi__angka {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.urgensi__angka b {
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--blue-dark);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-theme="dark"] .urgensi__angka b {
+  color: var(--blue-light);
+}
+.urgensi__angka span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* Baris skala pasar: angka dipisah garis, bukan kartu statistik */
+.urgensi__skala {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.urgensi__skala li {
+  border-top: 2px solid var(--ink);
+  padding: 12px 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.urgensi__skala b {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.urgensi__skala span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.urgensi__skala small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.urgensi__nota {
+  margin: 22px auto 0;
+  max-width: 68ch;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Gerak: bilah biaya tumbuh saat bagian ini masuk layar (scroll-driven, progresif). */
+@supports (animation-timeline: view()) {
+  @keyframes urgensi-bar {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  .urgensi__bar-row i {
+    animation: urgensi-bar linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 60%;
+  }
+  .urgensi__utama,
+  .urgensi__kartu {
+    animation: rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}

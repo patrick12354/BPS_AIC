@@ -4,6 +4,7 @@
 @import "./tokens.css";
 @import "./base.css";
 @import "./landing.css";
+@import "./urgency.css";
 @import "./dashboard.css";
 /* Terakhir: laporan memakai primitif dari `dashboard.css` (.panel, .mtable, .equote) dan
    sesekali menimpanya untuk konteksnya sendiri. */

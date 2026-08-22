@@ -9,6 +9,7 @@ import {
   HowItWorks,
   MarketplaceBand,
   SiteNav,
+  Urgency,
   Value,
 } from "../components/landing/index.js";
 import { goTo } from "../lib/hooks.js";
@@ -21,6 +22,7 @@ export function LandingScreen({ theme, onToggleTheme }) {
       <SiteNav onStart={start} theme={theme} onToggleTheme={onToggleTheme} />
       <Hero onStart={start} />
       <MarketplaceBand />
+      <Urgency />
       <HowItWorks />
       <Features />
       <Value />
