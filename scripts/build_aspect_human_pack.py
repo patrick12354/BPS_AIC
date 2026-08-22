@@ -193,6 +193,16 @@ python ml/text/evaluate_aspect_human.py
 Skrip itu menghitung kesepakatan antar-pelabel (Cohen's kappa per aspek), membuat daftar baris
 yang perlu diputuskan orang ketiga, lalu mengukur leksikon vs TF-IDF vs IndoBERT vs label
 gold-LLM pada label manusia - dan menulis hasilnya apa adanya ke `ml/evaluation/`.
+
+## Susunan alternatif: LLM + manusia
+
+Bila pelabel A diisi LLM (`scripts/_llm_aspect_labels_A.py`, dengan bendera RAGU/yakin per
+baris), pelabel B manusia cukup melabeli `aspect_human_B_sisa.csv` - seluruh baris RAGU + sampel
+kontrol acak dari baris yakin, tanpa diberi tahu mana yang mana. Hasilnya disimpan otomatis
+sebagai `aspect_human_B_sisa_done.csv`; skrip evaluasi yang sama mengenali susunan ini, memakai
+label **manusia** sebagai satu-satunya rujukan, dan melaporkan label LLM hanya sebagai satu
+pembanding beserta taksiran seberapa sering "yakin"-nya cocok dengan manusia. Susunan ini lebih
+lemah daripada dua manusia independen, dan dilaporkan demikian.
 """
 
 

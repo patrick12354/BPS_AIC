@@ -172,3 +172,71 @@ def test_dua_berkas_pelabel_berurutan_berbeda_tetapi_isinya_sama(tmp_path):
     ra = [r["clause_id"] for r in csv.DictReader(a.open(encoding="utf-8"))]
     rb = [r["clause_id"] for r in csv.DictReader(b.open(encoding="utf-8"))]
     assert ra != rb and sorted(ra) == sorted(rb)
+
+
+# ---------------------------------------------------------------- susunan LLM + manusia
+
+
+def _row_flag(cid, text, aspects, flag, sent="negatif"):
+    r = _row(cid, text, aspects, sent)
+    r["catatan_pelabel"] = flag
+    return r
+
+
+def test_pelabel_llm_dikenali_dari_bendera():
+    llm = {"c1": _row_flag("c1", "x", ["pengiriman"], "yakin"),
+           "c2": _row_flag("c2", "y", ["kemasan"], "RAGU: penyok barang atau dus")}
+    manusia = {"c1": _row("c1", "x", ["pengiriman"]), "c2": _row("c2", "y", ["kemasan"])}
+    assert eval_mod.is_llm_annotator(llm) is True
+    assert eval_mod.is_llm_annotator(manusia) is False
+
+
+def test_rujukan_pada_susunan_llm_adalah_manusia_bukan_kesepakatan():
+    """Label LLM tidak boleh menjadi rujukan walau ia 'yakin' - manusialah rujukannya."""
+    a = {"c1": _row_flag("c1", "x", ["kemasan"], "yakin")}
+    b = {"c1": _row("c1", "x", ["kualitas_produk"])}
+    ag = eval_mod.agreement(a, b)
+    ref, pending = eval_mod.reference_labels(a, b, ag["ids"], None, human_only_b=True)
+    assert not pending
+    assert ref["c1"][eval_mod.ALL_ASPECTS.index("kualitas_produk")] == 1
+    assert ref["c1"][eval_mod.ALL_ASPECTS.index("kemasan")] == 0
+
+
+def test_audit_kontrol_menghitung_kecocokan_yakin_dan_ragu_terpisah():
+    a = {"k1": _row_flag("k1", "t", ["pengiriman"], "yakin"),
+         "k2": _row_flag("k2", "t", ["kemasan"], "yakin"),
+         "r1": _row_flag("r1", "t", ["kualitas_produk"], "RAGU: x")}
+    b = {"k1": _row("k1", "t", ["pengiriman"]),
+         "k2": _row("k2", "t", ["kualitas_produk"]),
+         "r1": _row("r1", "t", ["kualitas_produk"])}
+    ag = eval_mod.agreement(a, b)
+    au = eval_mod.control_audit(a, b, ag["ids"])
+    assert au["n_control_yakin"] == 2 and au["exact_agreement_yakin"] == 1
+    assert au["rate_yakin"] == 0.5
+    assert au["n_ragu"] == 1 and au["exact_agreement_ragu"] == 1
+    lo, hi = au["ci95_yakin"]
+    assert lo < 0.5 < hi
+
+
+def test_selang_wilson_menyempit_dengan_n():
+    lo1, hi1 = eval_mod._wilson(5, 10)
+    lo2, hi2 = eval_mod._wilson(50, 100)
+    assert (hi2 - lo2) < (hi1 - lo1)
+    assert eval_mod._wilson(0, 0) == (0.0, 0.0)
+
+
+@pytest.mark.skipif(not (REPO / "data" / "annotation" / "aspect_human_A_done.csv").exists(),
+                    reason="berkas label LLM tidak ada")
+def test_berkas_llm_lengkap_dan_subset_manusia_tanpa_label():
+    """Berkas A (LLM) harus melabeli semuanya dengan bendera; subset B untuk manusia harus kosong
+    labelnya dan memuat SEMUA baris RAGU - manusia wajib memutuskan setiap keraguan LLM."""
+    a = eval_mod._read(REPO / "data" / "annotation" / "aspect_human_A_done.csv")
+    assert len(a) == 200 and eval_mod.is_llm_annotator(a)
+    ragu = {i for i, r in a.items() if r["catatan_pelabel"].startswith("RAGU")}
+    sub_path = REPO / "data" / "annotation" / "aspect_human_B_sisa.csv"
+    if sub_path.exists():
+        sub = eval_mod._read(sub_path)
+        assert ragu <= set(sub)
+        for r in sub.values():
+            assert r["sentimen"] == "" and all(r[c] == "" for c in eval_mod.ASPECT_COLS)
+            assert r["catatan_pelabel"] == ""  # bendera LLM tidak bocor ke manusia

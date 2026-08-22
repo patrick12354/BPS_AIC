@@ -1,0 +1,201 @@
+clause_id,clause_text,category_produk,asp_kualitas_produk,asp_kesesuaian_deskripsi,asp_harga_value,asp_ukuran_varian,asp_rasa_kualitas_makanan,asp_kemasan,asp_pengiriman,asp_pelayanan_penjual,asp_kelengkapan,asp_keaslian,asp_kemudahan_penggunaan,sentimen,catatan_pelabel
+r000494_c0,emang rasanya kaya basi apa gimana,food_beverage,,,,,1,,,,,,,negatif,yakin
+r018239_c1,pengiriman cepat,fashion,,,,,,,1,,,,,positif,yakin
+r013614_c0,baranh sudah sampai hanya packing kurang aman,electronics,,,,,,1,1,,,,,negatif,RAGU: 'sudah sampai' netral soal pengiriman; keluhannya packing
+r006956_c1,harga kompetitif,fashion,,,1,,,,,,,,,positif,yakin
+fresh_70a7dbd381,fit di badan,fashion,,,,1,,,,,,,,positif,yakin
+fresh_a8a1169e77,pesan uk l malah kecil banget,fashion,,,,1,,,,,,,,negatif,yakin
+r034224_c0,barang tlh kmi terima dengan baik n cepat,other,,,,,,,1,,,,,positif,yakin
+r029079_c2,trims,electronics,,,,,,,,,,,,netral,RAGU: ucapan terima kasih - bisa dibaca positif
+fresh_ed7ffbd21a,bahan:halus lembut nyaman desain:bagus menarik tekstur:halus alhamdulillah baju saya sudah sampai dengan selamat dan amann,fashion,1,,,,,,1,,,,,positif,yakin
+fresh_7d3d7edd01,kenyamanan:nyaman dipakai bahan:bahan bagus desain:desain cukup rapi saya tidak tau kenapa mungkin ada kesalahan,fashion,1,,,,,,,,,,,positif,"RAGU: ada 'mungkin ada kesalahan' - campuran, arahnya tidak jelas"
+r003227_c0,fitur kurang memuaskan hanya sedikit seperti band yang sebelumnya belum layar sentuh full tidak sesuai dengan harga,electronics,1,,1,,,,,,,,,negatif,yakin
+fresh_9c3aff9c67,yang dateng malah hitam,fashion,,,,1,,,,,,,,negatif,yakin
+fresh_23f10d818d,"dingin bnget sya suka desain:desain cukup rapi cocok untuk sehari""",fashion,1,,,,,,,,,,,positif,yakin
+r038909_c2,produknya sejauh ini bisa dipakai,other,1,,,,,,,,,,,netral,"RAGU: 'bisa dipakai' - datar, bisa dibaca positif lemah"
+r023001_c2,suara nya mayan bagus untuk harga 100rban,electronics,1,,1,,,,,,,,,positif,yakin
+r020131_c0,jam original n packaging rapi,fashion,,,,,,1,,,,1,,positif,yakin
+r014501_c0,mantap bro tidak salah dengan brodo selalu memuaskan,fashion,,,,,,,,,,,,positif,"RAGU: pujian umum ke merek, tidak menyebut aspek"
+r038896_c0,mungkin lebih baik lagi kalau disediakan ukuran,other,,,,1,,,,,,,,netral,RAGU: saran agar disediakan pilihan ukuran - netral atau keluhan ringan
+r013406_c0,lumayan untuk harga yang semurah ini,electronics,,,1,,,,,,,,,positif,yakin
+fresh_2e88b1a1ce,bahan:katun tekstur:lembut desain:cutting belah sesuai harga lah lumayan buat ganti ganti terima kasih,fashion,1,,1,,,,,,,,,positif,yakin
+fresh_7897b51515,barang yang di kirimkan rusak kecewa bnget,fashion,1,,,,,,,,,,,negatif,RAGU: barang rusak saat dikirim - kualitas produk atau kerusakan pengiriman?
+r000094_c2,terus menghubungi cs nya,electronics,,,,,,,,1,,,,netral,yakin
+r002775_c1,tidak sesuai,fashion,,1,,,,,,,,,,negatif,yakin
+r022776_c1,sesuai produk terima kasih bos respon cepat nya,electronics,,1,,,,,,1,,,,positif,yakin
+r037016_c1,mudah dipakai,other,,,,,,,,,,,1,positif,yakin
+r032571_c0,pengiriman cepat,electronics,,,,,,,1,,,,,positif,yakin
+fresh_7c6d490e2b,kenyamanan:enak tekstur:meral desain:ok jujur warna ny tidak sesuai ekspetasi ak,fashion,1,1,,,,,,,,,,negatif,RAGU: campuran: nyaman tapi warna tidak sesuai ekspektasi
+r017891_c3,saya yang tinggi 165 berat 60 saja kegedean banget untuk ukuran m nya,fashion,,,,1,,,,,,,,negatif,yakin
+r030279_c0,bagus original,electronics,1,,,,,,,,,1,,positif,yakin
+fresh_a0b0f5df08,dan saya chekout ke dua kali nya malah yang dateng warna hitam lagi,fashion,,,,1,,,,,,,,negatif,yakin
+r033124_c0,barang ori,electronics,,,,,,,,,,1,,positif,yakin
+r014206_c2,recommended seller banget,electronics,,,,,,,,1,,,,positif,yakin
+fresh_73322326fd,kenyamanan:td tau tekstur:licin desain:b saja terawang banget minta hitam dkirim putih,fashion,1,,,1,,,,,,,,negatif,yakin
+fresh_82d93c4d29,bahan:nyaman dan tidak panas,fashion,1,,,,,,,,,,,positif,yakin
+r014728_c2,tidak bisa kaki sakit,fashion,1,,,1,,,,,,,,negatif,RAGU: 'kaki sakit' - ukuran/fit atau kualitas sepatu?
+r015659_c1,nya sesuai gambar mungkin size&#39,fashion,,1,,1,,,,,,,,positif,RAGU: klausa terpotong: 'mungkin size...'
+r013731_c1,cuman produk g sesuai pesanan warna,electronics,,,,1,,,,,,,,negatif,yakin
+r038862_c1,karena ibu saya senang,other,,,,,,,,,,,,positif,yakin
+fresh_045857795e,ya sudah lah,fashion,,,,,,,,,,,,netral,"RAGU: 'ya sudah lah' - pasrah, bisa dibaca negatif"
+r001413_c0,sudah tanya sebelumnya sama penjualnya ada tidak balon warna gold dama silver,craft,,,,,,,,1,,,,netral,yakin
+r000557_c2,edit: rasanya juga asin banget,food_beverage,,,,,1,,,,,,,negatif,yakin
+r037828_c1,sangat puas dengan produk dan pelayanannya yang sangat cepat,other,1,,,,,,,1,,,,positif,yakin
+r005807_c1,untuk mollar jangan pakai yang ini :),craft,1,,,,,,,,,,,negatif,RAGU: 'untuk molar jangan pakai ini' - ketidakcocokan fungsi; kesesuaian atau kualitas?
+r003045_c2,manual pake bahasa china sulit dipahami,other,,,,,,,,,,,1,negatif,yakin
+r004366_c0,minta size 43 yang dikirim size 44,fashion,,,,1,,,,,,,,negatif,yakin
+r004852_c0,kemasannya kurang baikk kotakya tidak rapih seperti bekas,other,,,,,,1,,,,,,negatif,yakin
+r000524_c0,enak enak enak enak sekali,food_beverage,,,,,1,,,,,,,positif,yakin
+r002369_c0,pengiriman cepat + aman banyak bubble wrap,other,,,,,,1,1,,,,,positif,yakin
+r020679_c2,sudah dicoba smua berfungsi baik,electronics,1,,,,,,,,,,,positif,yakin
+r017397_c6,bahkan lebih banyak bonus nya dari pada apa yang saya beli,fashion,,,,,,,,,1,,,positif,yakin
+r014883_c0,sedap gurih,fashion,,,,,1,,,,,,,positif,RAGU: 'sedap gurih' pada kategori fashion - mungkin sarkasme atau salah kategori
+r022343_c0,terima kasih gan barang sudah saya terima dengan baik,electronics,,,,,,,1,,,,,positif,yakin
+r014111_c3,bonus atau gimana ya sis,electronics,,,,,,,,,1,,,netral,yakin
+r014122_c3,barangnya bagus bonusnya yahud,electronics,1,,,,,,,,1,,,positif,yakin
+r028599_c0,respon sangat cepat,electronics,,,,,,,,1,,,,positif,yakin
+r036108_c1,kirimnya cepat responnya cepat puaslah sama pelayanannya,other,,,,,,,1,1,,,,positif,yakin
+r002355_c0,mantap ori,other,,,,,,,,,,1,,positif,yakin
+r005813_c0,barang dan isinya sesuai pesanan,craft,,1,,,,,,,1,,,positif,yakin
+r002507_c18,penjualnya ramah banget,electronics,,,,,,,,1,,,,positif,yakin
+r029934_c0,mantap barang bagus,electronics,1,,,,,,,,,,,positif,yakin
+r006002_c1,barang asli krisbow,craft,,,,,,,,,,1,,positif,yakin
+r017397_c5,dan dapat bonus banyak sekali,fashion,,,,,,,,,1,,,positif,yakin
+fresh_d3b7d9becd,kenyamanan:kurang beli baju baru dikasih baju bolong,fashion,1,,,,,,,,,,,negatif,yakin
+r000567_c0,kue nya pas dateng dicoba asem,food_beverage,,,,,1,,,,,,,negatif,yakin
+r022860_c0,oke gan manntap gan,electronics,,,,,,,,,,,,positif,yakin
+fresh_2e96f2bd19,ini warna nya aga ke ungu' an gtu bukan pink muda,fashion,,1,,,,,,,,,,negatif,yakin
+r002371_c2,barang bagus dan ori,other,1,,,,,,,,,1,,positif,yakin
+r011633_c2,murah meriah,electronics,,,1,,,,,,,,,positif,yakin
+r002552_c0,dikirimnya lama,electronics,,,,,,,1,,,,,negatif,yakin
+r004144_c1,kualitas sesuai harga,fashion,1,,1,,,,,,,,,positif,RAGU: 'kualitas sesuai harga' - positif lemah atau netral
+r014120_c0,responnya cepat banget pengiriman cepat banget barang oke bgt,electronics,1,,,,,,1,1,,,,positif,yakin
+r020871_c0,packing rapi,electronics,,,,,,1,,,,,,positif,yakin
+r003108_c2,dari saya sendiri tidak kirim kesana karena ribet dalam ongkir dan pengiriman nya,electronics,,,,,,,1,,,,,negatif,RAGU: ongkir & pengiriman ribet - konteks terpotong
+fresh_1aefe8bc45,jelas2 hitam nympenya merah,fashion,,,,1,,,,,,,,negatif,yakin
+r004919_c0,barang sudah sampai,electronics,,,,,,,1,,,,,netral,yakin
+r013731_c2,di box hitam isinya doreng,electronics,,1,,,,,,,,,,negatif,RAGU: isi box berbeda dari label - kesesuaian atau varian?
+r000523_c2,rasanya mantap,food_beverage,,,,,1,,,,,,,positif,yakin
+r022394_c1,sudah dipake enak barang nya alhamdulillah tidak ada kendala,electronics,1,,,,,,,,,,,positif,yakin
+fresh_0a41eb8d67,kenyamanan:nyaman bahan:bagus kok desain:bagus cuman bolong dikitt,fashion,1,,,,,,,,,,,negatif,RAGU: campuran: nyaman/bagus tapi bolong
+r001304_c0,cepat resp seller pengiriman cepat packaging rapih aman barang lengkap sesuaii thankss a lott,other,,1,,,,1,1,1,1,,,positif,yakin
+r009152_c0,pengiriman cepat barang sesuai dengan harga,fashion,,,1,,,,1,,,,,positif,yakin
+fresh_79b1dbc793,adem ngak bikin gerah,fashion,1,,,,,,,,,,,positif,yakin
+r022764_c1,recomm sudah top marktop,electronics,,,,,,,,,,,,positif,RAGU: 'top markotop' - pujian umum tanpa aspek
+r035444_c0,standar sesuai harga,other,,,1,,,,,,,,,netral,RAGU: 'standar sesuai harga' - netral atau positif lemah
+r022682_c4,but oke lah,electronics,,,,,,,,,,,,positif,"RAGU: 'but oke lah' - positif lemah, klausa terpotong"
+r016838_c1,pengiriman super cepat,fashion,,,,,,,1,,,,,positif,yakin
+fresh_78307a1b8b,bahan:bahan baju warna coklatnya halus halo kak kenapa ya chat saya tidak di balas kecewa sedikit pesannya warna putih 1 dan coklat,fashion,1,,,1,,,,1,,,,negatif,RAGU: tiga hal sekaligus; 'pesannya warna putih 1 dan coklat' tersirat varian salah
+r004812_c3,chat tidak pernah di bls,other,,,,,,,,1,,,,negatif,yakin
+r003680_c6,boro2 dikonsumsi,other,1,,,,,,,,,,,negatif,RAGU: 'boro-boro dikonsumsi' - kategori other; rasa atau kualitas?
+r002835_c0,seller ramah,fashion,,,,,,,,1,,,,positif,yakin
+r006700_c0,barang bagus pake banget pengiriman mantap,craft,1,,,,,,1,,,,,positif,yakin
+r028569_c0,barang tidak sesuai dengan yang original bawaannya,electronics,,1,,,,,,,,1,,negatif,RAGU: 'tidak sesuai dengan yang original bawaannya' - keaslian atau kesesuaian
+r013134_c3,main jadi lebih asik,electronics,1,,,,,,,,,,,positif,"RAGU: 'main jadi lebih asik' - manfaat produk, aspeknya samar"
+r018413_c0,produk ori lengkap dengan box,fashion,,,,,,,,,1,1,,positif,yakin
+r003385_c1,penjualnya ramah banget nyaman di punggung packaging aman,other,1,,,,,1,,1,,,,positif,yakin
+fresh_0e7564e529,sudah brpa kali di krim tidak sesuai ukurn yang di pesan,fashion,,,,1,,,,,,,,negatif,yakin
+r003941_c2,tp barang yang datang penyok,other,1,,,,,,,,,,,negatif,RAGU: barang penyok - produk atau kemasan?
+r015606_c2,nyaman dipakai,fashion,1,,,,,,,,,,,positif,yakin
+r022948_c0,barang yang di pesan tidak sesuai pesanan,electronics,,1,,,,,,,,,,negatif,RAGU: 'tidak sesuai pesanan' generik - kesesuaian atau varian
+r003345_c0,nyaman banget dipakai,other,1,,,,,,,,,,,positif,yakin
+fresh_e3aecd4bbf,kaos yang warna terang sedikit nerawang but it’s oke overall bagus,fashion,1,,,,,,,,,,,positif,RAGU: campuran: nerawang tapi overall bagus
+fresh_fff78a95de,bahan:kualitasnya sesuai standar tekstur:sangat lembut dan nyaman desain:imut dan menarik perhatian baru kali ini nemu kaos yang lucu banget terus bagus banget lagi,fashion,1,,,,,,,,,,,positif,yakin
+fresh_99485864f4,bahan:lumayan desain:oke tekstur:lembut pengemasan dan pengiriman cepat packaging standar dan aman,fashion,1,,,,,1,1,,,,,positif,yakin
+r002837_c2,rekomendit banget deh pokok nya buat beli disini dan juga lengkap lagi,fashion,,,,,,,,1,1,,,positif,RAGU: 'beli di sini' = toko; 'lengkap' = kelengkapan
+r039049_c0,terimakasih barang sudah sampai,other,,,,,,,1,,,,,netral,RAGU: ucapan terima kasih + barang sampai
+r014769_c0,suka banget 😍 nyaman dipake,fashion,1,,,,,,,,,,,positif,yakin
+r038893_c0,cukup sudah lumayan gan ukuran dan warna sesuai dengan foto,other,,1,,1,,,,,,,,positif,yakin
+r022999_c0,produk sesuai spek,electronics,,1,,,,,,,,,,positif,yakin
+fresh_b3296d581b,tokony g amanah,fashion,,,,,,,,1,,,,negatif,yakin
+r022671_c3,sudah dicoba dan bagus,electronics,1,,,,,,,,,,,positif,yakin
+fresh_da156ecbea,eman juga beli dngn harga 40rb an,fashion,,,1,,,,,,,,,negatif,"RAGU: 'eman juga beli dengan harga 40rb' - sesal soal harga, konteks terpotong"
+r022621_c0,bagus lumayan dengan harga segini,electronics,1,,1,,,,,,,,,positif,yakin
+r008411_c2,mdh&#34,electronics,,,,,,,,,,,1,positif,RAGU: 'mdh' terpotong - kemungkinan 'mudah'
+r004231_c3,bisa kepakek untuk di rumah saja warnanya cantik,fashion,1,,,,,,,,,,,positif,RAGU: 'bisa dipakai di rumah saja' - pujian terbatas
+fresh_8c7e75e3e7,kenyamanan:saya beli hitam sama mahogani bahan beda beda ademan yang mahogani,fashion,1,,,,,,,,,,,negatif,RAGU: bahan beda antar-varian - keluhan konsistensi atau sekadar info
+r002748_c0,tidak sesuai gambar depan terlalu pendek,fashion,,1,,1,,,,,,,,negatif,yakin
+r033304_c0,kualitas oke pemakaian pas recommended,fashion,1,,,1,,,,,,,,positif,yakin
+fresh_983ce7b1d9,yang ini pesen warna coksu dan mahogany,fashion,,,,1,,,,,,,,netral,yakin
+fresh_884822fc42,seller no respon bad banget,fashion,,,,,,,,1,,,,negatif,yakin
+r028065_c4,barang sesuai dengan gambar,electronics,,1,,,,,,,,,,positif,yakin
+fresh_4d8dc33244,saran min buat bahan konsisten dan jahitan dibuat lebih rapi,fashion,1,,,,,,,,,,,negatif,RAGU: saran perbaikan bahan & jahitan - keluhan halus
+r018298_c0,ori fossil,fashion,,,,,,,,,,1,,positif,yakin
+r003715_c5,kurir beratnggung jawab dan pesankan lagi warna hitam pakai toko online lain,other,,,,,,,1,,,,,netral,RAGU: kurir bertanggung jawab (positif) + pesan di toko lain (negatif) - campuran
+r025769_c1,responnya cepat tanpa banyak basa-basi langsung dikirim &amp,electronics,,,,,,,1,1,,,,positif,yakin
+r011904_c0,kwalitas sesuai dengan harga nya,electronics,1,,1,,,,,,,,,positif,RAGU: 'kualitas sesuai harga' - netral atau positif lemah
+r014427_c0,produk oke packing rapih dan pengiriman cepat,electronics,1,,,,,1,1,,,,,positif,yakin
+r002507_c11,suaranya gurih,electronics,1,,,,,,,,,,,positif,yakin
+r036021_c3,tidak dapet warna pink,other,,,,1,,,,,,,,negatif,yakin
+fresh_8379b05f35,jujur sedikit kecewa,fashion,,,,,,,,,,,,negatif,yakin
+r019936_c2,dan juga ori,fashion,,,,,,,,,,1,,positif,yakin
+r003393_c2,panjang tongkat 100cm ada 2 sisi,electronics,,,,1,,,,,,,,netral,"RAGU: deskripsi dimensi - dimensi = ukuran_varian menurut panduan, tetapi datar"
+r016395_c1,pengiriman tettunda sama saja pake jne mahal di ongkir pake gosend kalau tertunda sperti ini,fashion,,,,,,,1,,,,,negatif,RAGU: ongkir mahal - pengiriman atau harga?
+fresh_304389ac05,bahan:bahan nya adem tekstur:sangat lembut & nyaman desain:menarik,fashion,1,,,,,,,,,,,positif,yakin
+fresh_b55539f84b,real pict sesuai yang di live pokoknya sukaa 🥰💖 terimakasih seller 🙏🥰,fashion,,1,,,,,,1,,,,positif,yakin
+r002499_c4,dan ada bonus kartu perdana smartfren,electronics,,,,,,,,,1,,,positif,yakin
+fresh_8e87c162bf,saya chekout nya warna coklat😕,fashion,,,,1,,,,,,,,netral,RAGU: pertanyaan soal warna yang di-checkout - tersirat salah kirim
+r022589_c0,l 2 di pencet rada kurang enak,electronics,1,,,,,,,,,,,negatif,RAGU: tombol L2 kurang enak ditekan - kualitas atau kemudahan pakai
+r022948_c3,rugi,electronics,,,1,,,,,,,,,negatif,RAGU: 'rugi' tanpa konteks
+fresh_9a494cd60e,pas di badan suka sama baju nya,fashion,1,,,1,,,,,,,,positif,yakin
+fresh_3ee23c9cc6,untuk barang sih sesuai ya size l,fashion,,1,,1,,,,,,,,positif,yakin
+r036110_c0,terima kasih barang sudah diterima dengan baik,other,,,,,,,1,,,,,positif,RAGU: ucapan terima kasih + diterima dengan baik
+r003344_c1,ada hooknya yang bisa ditarik jadi kalau celana kegedean,other,1,,,,,,,,,,,positif,RAGU: fitur hook - kualitas/desain atau kemudahan pakai
+r004137_c4,bahannya memang random dan tidak bisa milih,fashion,1,,,1,,,,,,,,negatif,RAGU: bahan random tidak bisa pilih - varian atau kualitas
+r013133_c1,enak d pake ngegame,electronics,1,,,,,,,,,,,positif,yakin
+r027502_c1,kok tidak bisa digunakan yaa,electronics,1,,,,,,,,,,,negatif,RAGU: 'tidak bisa digunakan' - cacat produk atau sulit dipakai
+fresh_5b9fa286e0,bahan:lembut tidak nerawang desain:simpel tekstur:lembut pas dibadan,fashion,1,,,1,,,,,,,,positif,yakin
+fresh_3d40b274c4,nyaman dan pas si ukuranku,fashion,1,,,1,,,,,,,,positif,yakin
+r015342_c2,biasanya pesan sepatu ukuran 36,fashion,,,,1,,,,,,,,netral,yakin
+r034140_c0,barang sampai kurang dari 1 jam,other,,,,,,,1,,,,,positif,yakin
+r003561_c13,dengan harg lumayan mahal,other,,,1,,,,,,,,,negatif,RAGU: 'harga lumayan mahal' - konteks terpotong
+r026853_c0,lengkap sesuai pesanan,electronics,,1,,,,,,,1,,,positif,yakin
+r002357_c0,cepat response pengiriman cepat packing aman dan rapi buku ori harga bersaing,other,,,1,,,1,1,1,,1,,positif,yakin
+r022655_c1,cepat respon packing rapi dan sesuai pesanan,electronics,,1,,,,1,,1,,,,positif,yakin
+fresh_f396284046,lain kali kalau jualan yang amanah,fashion,,,,,,,,1,,,,negatif,yakin
+r022507_c1,di packing pakai kresek😂😂,electronics,,,,,,1,,,,,,negatif,yakin
+r036059_c1,pengiriman sangat cepat langsung dikirim pada hari pembayaran produk juga seperti di gambar bagus quality sya ksh 5 stars ^^,other,1,1,,,,,1,,,,,positif,yakin
+r000793_c1,packing safety bingitz,other,,,,,,1,,,,,,positif,yakin
+r028276_c0,mantap barang dkrim sesuai deskripsi,electronics,,1,,,,,,,,,,positif,yakin
+r011624_c0,kwalitas barang sesuai harga,electronics,1,,1,,,,,,,,,positif,RAGU: 'sesuai harga' - netral atau positif lemah
+fresh_edf330cfe5,tidak papa ini sebagai peringatan saja lain kali jngn kek gini lagi ke kostumer lainx yaa👍🏻,fashion,,,,,,,,1,,,,negatif,"RAGU: peringatan ke toko, isi keluhannya tidak disebut"
+r036668_c1,kemasan oke,other,,,,,,1,,,,,,positif,yakin
+fresh_4e2df7ccf0,yang mahogany terlalu kecil bukan uk l itu,fashion,,,,1,,,,,,,,negatif,yakin
+r001717_c0,barang tidak lengkap,craft,,,,,,,,,1,,,negatif,yakin
+r017479_c0,ah kereen banged sepatunya,fashion,1,,,,,,,,,,,positif,yakin
+fresh_36c55d7ebd,-bukan warna yang saya mau ini tokohnya tidak merhatiin kah pembelinya warna apa,fashion,,,,1,,,,1,,,,negatif,yakin
+r002193_c2,eh ada bonus nya juga ya,other,,,,,,,,,1,,,positif,yakin
+r000576_c6,manis buatan banget,food_beverage,,,,,1,,,,,,,negatif,yakin
+r022694_c2,kondisi mulus sesuai dengan deskripsi,electronics,1,1,,,,,,,,,,positif,yakin
+fresh_5d3860188c,buat di anak usia 7 tahun,fashion,,,,1,,,,,,,,netral,"RAGU: 'buat anak usia 7 tahun' - konteks ukuran, tanpa penilaian"
+r016641_c1,packing rapi,fashion,,,,,,1,,,,,,positif,yakin
+fresh_ff91067013,tidak sesuai pesanan yang di pesan 2 yang datang satu,fashion,,1,,,,,,,1,,,negatif,RAGU: pesan 2 datang 1 - kelengkapan atau kesesuaian pesanan
+r000577_c0,sangat tidak cocok dengan yang tidak suka manis,food_beverage,,,,,1,,,,,,,netral,RAGU: info 'tidak cocok untuk yang tidak suka manis' - netral atau negatif
+r035964_c1,bagus,other,1,,,,,,,,,,,positif,RAGU: 'bagus' generik - aspeknya ditebak kualitas
+r002926_c2,warnanya bagus,fashion,1,,,,,,,,,,,positif,yakin
+r035443_c3,sesaknya luar biasa,other,,,,1,,,,,,,,negatif,RAGU: 'sesaknya luar biasa' - ukuran/fit; kategori other
+r025791_c1,dan sesuai deskripsi seller cepat respon,electronics,,1,,,,,,1,,,,positif,yakin
+r004847_c1,alhasil dusnya babakbelur penyok & sobek sana sini,other,,,,,,1,,,,,,negatif,yakin
+r003802_c2,bukan buku original,other,,,,,,,,,,1,,negatif,yakin
+r006695_c0,mantap,craft,,,,,,,,,,,,positif,RAGU: 'mantap' generik
+r000094_c4,hadeuhh,electronics,,,,,,,,,,,,negatif,RAGU: 'hadeuh' - keluhan tanpa aspek
+fresh_cd6b6e17f6,bahan:kaos adem desain:lucu tekstur:lembut adem tidak panas kaosnya lembut di ukiran l nya,fashion,1,,,,,,,,,,,positif,yakin
+r034115_c6,lengkap dengan plastik pembungkus nya,other,,,,,,1,,,1,,,positif,yakin
+r014870_c0,bagusbtas,fashion,1,,,,,,,,,,,positif,RAGU: 'bagusbtas' - typo 'bagus banget'?
+r013703_c0,mantap barang sesuai deskripsi terima kasih,electronics,,1,,,,,,,,,,positif,yakin
+r014799_c2,produk dikirimkan dengan tutorial penggunaan yang sangat efektif membersihkan kotoran,fashion,1,,,,,,,,,,1,positif,RAGU: tutorial penggunaan efektif - kemudahan pakai atau kualitas
+r013672_c0,barang bagus,electronics,1,,,,,,,,,,,positif,yakin
+fresh_d075c5004d,sudah 1 minggu loh nungguin balasan,fashion,,,,,,,,1,,,,negatif,yakin
+r014106_c1,pas banget dengan body miro,electronics,,1,,,,,,,,,,positif,RAGU: 'pas dengan body' perangkat - kesesuaian atau ukuran
+fresh_4117c3de05,kecewa sih sama toko ini order nya yang warna coklat yang dateng malah warna hitam tidak sesuai bangett,fashion,,,,1,,,,1,,,,negatif,yakin
+r013897_c3,bagus seller,electronics,,,,,,,,1,,,,positif,yakin
+r033303_c1,size pas untuk ukuran lokal,fashion,,,,1,,,,,,,,positif,yakin
+fresh_5275da42cd,mines bukan warna yang saya mau tekstur:bahannya kaos tidak gerah juga enak ko,fashion,1,,,1,,,,,,,,negatif,RAGU: campuran: warna salah tapi bahan enak
+fresh_ee71b74cdc,bahan:sejuk dan nyaman desain:modern tekstur:sangat lembut dan halus kaos wanita polos bagus banget modelnya trus bawahnya oval lg jahitan rapih bahan adem lembut nyaman dikulit,fashion,1,,,,,,,,,,,positif,yakin
+r034139_c1,lama nya kirim barang nya,other,,,,,,,1,,,,,negatif,yakin
+r000369_c0,proses cepat produk bagus finising mulus,other,1,,,,,,,1,,,,positif,RAGU: 'proses cepat' - pelayanan atau pengiriman
+r000413_c3,sambel ttp enak,food_beverage,,,,,1,,,,,,,positif,yakin
+fresh_a3800afc77,bahannya tidak tipis enaken,fashion,1,,,,,,,,,,,positif,yakin
+fresh_643c607b7f,bahan:enakeun tekstur:lembut desain:suka bagus jangan ragu untuk beli di toko ini saya sudah beli dua kali alhamdulillah tokonya amanah masya allah berkah sllu dan sehat sllu makasih🙏,fashion,1,,,,,,,1,,,,positif,yakin
+r000139_c0,kualitas suara oke banget apalagi dengan harga yang terjangkau barang pun dijamin ori karena sudah terdaftar di website razer langsung pokoknya bagus lah bassnya juga kerasa,electronics,1,,1,,,,,,,1,,positif,yakin
+r037628_c0,barang bagus lengkap sesuai pesanan,other,1,1,,,,,,,1,,,positif,yakin

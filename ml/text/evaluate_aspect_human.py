@@ -1,9 +1,23 @@
 """Evaluasi aspek pada LABEL MANUSIA INDEPENDEN - penengah terakhir untuk klaim aspek NLP-01.
 
 Masukan: dua berkas pelabel yang sudah diisi TERPISAH
-    data/annotation/aspect_human_A_done.csv
-    data/annotation/aspect_human_B_done.csv
+    data/annotation/aspect_human_A_done.csv      - pelabel A
+    data/annotation/aspect_human_B_done.csv      - pelabel B (lengkap), ATAU
+    data/annotation/aspect_human_B_sisa_done.csv - pelabel B pada subset (lihat di bawah)
 (dibuat oleh scripts/build_aspect_human_pack.py, diisi lewat label_aspek.html)
+
+Dua susunan yang didukung, dan keduanya dilaporkan apa adanya:
+
+* **Dua manusia** - A dan B sama-sama manusia, keduanya melabeli 200 klausa. Rujukan = yang
+  disepakati + adjudikasi. Ini susunan terkuat.
+* **LLM + manusia** - A adalah LLM (scripts/_llm_aspect_labels_A.py) yang melabeli 200 klausa
+  dengan bendera RAGU/yakin di `catatan_pelabel`; B adalah manusia yang melabeli SUBSET: seluruh
+  baris RAGU + sampel kontrol acak dari baris yakin. Di susunan ini **rujukan adalah label
+  manusia saja** - label LLM tidak pernah menjadi rujukan, ia dilaporkan sebagai satu
+  "pendekatan" pembanding. Sampel kontrol menaksir seberapa sering "yakin" LLM salah, dan
+  taksiran itu dilaporkan dengan margin kesalahannya.
+  Susunan ini TIDAK sekuat dua manusia - dan skrip ini menulis itu di berkas hasilnya, supaya
+  tidak ada yang perlu mengira-ngira.
 
 Yang dilakukan, berurutan:
 
@@ -45,6 +59,8 @@ ANNOT = REPO_ROOT / "data" / "annotation"
 EVAL_OUT = REPO_ROOT / "ml" / "evaluation"
 A_PATH = ANNOT / "aspect_human_A_done.csv"
 B_PATH = ANNOT / "aspect_human_B_done.csv"
+B_SUBSET_PATH = ANNOT / "aspect_human_B_sisa_done.csv"
+LLM_A_SCRIPT = REPO_ROOT / "scripts" / "_llm_aspect_labels_A.py"
 ADJ_TASK = ANNOT / "aspect_human_adjudication.csv"
 ADJ_DONE = ANNOT / "aspect_human_adjudicated.csv"
 GOLD = ANNOT / "gold_labels.csv"
@@ -117,10 +133,61 @@ def agreement(a_rows: dict[str, dict], b_rows: dict[str, dict]) -> dict:
             "pooled_kappa": pooled, "exact_row_agreement": None if exact is None else round(exact, 4)}
 
 
-def reference_labels(a_rows, b_rows, ids, adjudicated: dict[str, dict] | None):
-    """Label rujukan: sepakat -> pakai; beda -> adjudikasi bila ada, kalau tidak dilewati."""
+def is_llm_annotator(rows: dict[str, dict]) -> bool:
+    """Pelabel A dikenali sebagai LLM dari bendera di catatan_pelabel ('yakin' / 'RAGU: ...')."""
+    vals = [str(r.get("catatan_pelabel", "")).strip() for r in rows.values()]
+    return bool(vals) and all(v == "yakin" or v.startswith("RAGU") for v in vals)
+
+
+def _wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Selang kepercayaan 95% Wilson untuk proporsi - lebih jujur dari +-1.96*sqrt(p(1-p)/n)
+    pada n kecil dan p dekat 0 atau 1, yang persis keadaan sampel kontrol 60 baris."""
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return (round(float(centre - half), 4), round(float(centre + half), 4))
+
+
+def control_audit(a_rows: dict[str, dict], b_rows: dict[str, dict], ids: list[str]) -> dict:
+    """Seberapa sering label 'yakin' LLM cocok PERSIS dengan manusia, pada baris kontrol.
+
+    Hanya bermakna pada susunan LLM + manusia. Angka ini yang membatasi klaim apa pun yang
+    dibangun di atas baris 'yakin' yang tidak diperiksa manusia - dan karena itu dilaporkan
+    dengan selang kepercayaan, bukan sebagai satu angka.
+    """
+    kontrol = [i for i in ids if str(a_rows[i].get("catatan_pelabel", "")).strip() == "yakin"]
+    ragu = [i for i in ids if str(a_rows[i].get("catatan_pelabel", "")).startswith("RAGU")]
+    def exact(subset):
+        return sum(1 for i in subset if (_labels(a_rows[i]) == _labels(b_rows[i])).all())
+    k_c, k_r = exact(kontrol), exact(ragu)
+    return {
+        "n_control_yakin": len(kontrol),
+        "exact_agreement_yakin": k_c,
+        "rate_yakin": round(k_c / len(kontrol), 4) if kontrol else None,
+        "ci95_yakin": _wilson(k_c, len(kontrol)) if kontrol else None,
+        "n_ragu": len(ragu),
+        "exact_agreement_ragu": k_r,
+        "rate_ragu": round(k_r / len(ragu), 4) if ragu else None,
+    }
+
+
+def reference_labels(a_rows, b_rows, ids, adjudicated: dict[str, dict] | None,
+                     human_only_b: bool = False):
+    """Label rujukan: sepakat -> pakai; beda -> adjudikasi bila ada, kalau tidak dilewati.
+
+    Pada susunan LLM + manusia (`human_only_b=True`), rujukan adalah label B (manusia) untuk
+    SEMUA baris yang ia labeli - kesepakatan dengan LLM tidak dibutuhkan dan tidak dipakai.
+    Adjudikasi pun tidak berlaku: tidak ada "dua manusia yang berbeda" yang perlu ditengahi.
+    """
     ref: dict[str, np.ndarray] = {}
     pending: list[dict] = []
+    if human_only_b:
+        for i in ids:
+            ref[i] = _labels(b_rows[i])
+        return ref, pending
     for i in ids:
         la, lb = _labels(a_rows[i]), _labels(b_rows[i])
         if (la == lb).all():
@@ -137,7 +204,8 @@ def reference_labels(a_rows, b_rows, ids, adjudicated: dict[str, dict] | None):
     return ref, pending
 
 
-def evaluate(ref: dict[str, np.ndarray], texts: dict[str, str], sources: dict[str, str]) -> dict:
+def evaluate(ref: dict[str, np.ndarray], texts: dict[str, str], sources: dict[str, str],
+             llm_rows: dict[str, dict] | None = None) -> dict:
     ids = list(ref)
     Y = np.array([ref[i] for i in ids])
     T = [texts[i] for i in ids]
@@ -180,19 +248,27 @@ def evaluate(ref: dict[str, np.ndarray], texts: dict[str, str], sources: dict[st
         gold = _read(GOLD)
         P = np.array([_labels(gold[i]) if i in gold else np.zeros(len(ASPECT_COLS), int) for i in ids])
         out["models"]["gold_llm_labels_adr017"] = pack(P, gold_ids)
+
+    # Label pelabel A = LLM sebagai "pendekatan" kelima (hanya pada susunan LLM + manusia).
+    if llm_rows is not None:
+        P = np.array([_labels(llm_rows[i]) for i in ids])
+        out["models"]["llm_annotator_a"] = pack(P)
     return out
 
 
 def main() -> int:
-    if not (A_PATH.exists() and B_PATH.exists()):
+    b_path = B_PATH if B_PATH.exists() else B_SUBSET_PATH
+    if not (A_PATH.exists() and b_path.exists()):
         print("Belum ada berkas pelabel yang selesai. Diharapkan:")
-        print(f"  {A_PATH}\n  {B_PATH}")
+        print(f"  {A_PATH}\n  {B_PATH}  (atau {B_SUBSET_PATH.name} untuk susunan LLM + manusia)")
         print("Buat paketnya dulu: python scripts/build_aspect_human_pack.py")
         return 1
-    a_rows, b_rows = _read(A_PATH), _read(B_PATH)
+    a_rows, b_rows = _read(A_PATH), _read(b_path)
+    llm_mode = is_llm_annotator(a_rows)
     agree = agreement(a_rows, b_rows)
-    adjudicated = _read(ADJ_DONE) if ADJ_DONE.exists() else None
-    ref, pending = reference_labels(a_rows, b_rows, agree["ids"], adjudicated)
+    adjudicated = None if llm_mode else (_read(ADJ_DONE) if ADJ_DONE.exists() else None)
+    ref, pending = reference_labels(a_rows, b_rows, agree["ids"], adjudicated, human_only_b=llm_mode)
+    audit = control_audit(a_rows, b_rows, agree["ids"]) if llm_mode else None
 
     if pending:
         with ADJ_TASK.open("w", newline="", encoding="utf-8") as fh:
@@ -204,22 +280,42 @@ def main() -> int:
     if MANIFEST.exists():
         sources = json.loads(MANIFEST.read_text(encoding="utf-8")).get("sumber", {})
     texts = {i: a_rows[i]["clause_text"] for i in agree["ids"]}
+    if llm_mode:
+        provenance = (
+            "SUSUNAN LLM + MANUSIA. Pelabel A = LLM (scripts/_llm_aspect_labels_A.py) dengan bendera "
+            "RAGU/yakin; pelabel B = manusia pada subset (seluruh baris RAGU + sampel kontrol acak dari "
+            "baris yakin). RUJUKAN = label manusia saja; label LLM dilaporkan sebagai pendekatan "
+            "'llm_annotator_a', bukan sebagai kebenaran. Lebih lemah daripada dua manusia independen "
+            "dan harus disebut demikian."
+        )
+    else:
+        provenance = (
+            "Dua pelabel manusia independen (A, B) dari paket scripts/build_aspect_human_pack.py; "
+            "rujukan = baris yang disepakati keduanya + keputusan adjudikator ketiga bila ada."
+        )
     results = {
-        "provenance": "Dua pelabel manusia independen (A, B) dari paket scripts/build_aspect_human_pack.py; "
-                      "rujukan = baris yang disepakati keduanya + keputusan adjudikator ketiga bila ada.",
+        "setup": "llm_plus_human" if llm_mode else "two_humans",
+        "provenance": provenance,
         "kappa_floor": KAPPA_FLOOR,
         "agreement": {k: v for k, v in agree.items() if k != "ids"},
+        "control_audit": audit,
         "n_pending_adjudication": len(pending),
-        "evaluation": evaluate(ref, texts, sources) if ref else {"n_reference": 0, "models": {}},
+        "evaluation": (evaluate(ref, texts, sources, llm_rows=a_rows if llm_mode else None)
+                       if ref else {"n_reference": 0, "models": {}}),
     }
     EVAL_OUT.mkdir(parents=True, exist_ok=True)
     (EVAL_OUT / "aspect_human_results.json").write_text(
         json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    print(f"susunan                     : {'LLM + manusia (rujukan = manusia)' if llm_mode else 'dua manusia'}")
     print(f"klausa diisi kedua pelabel : {agree['n_both']}")
     print(f"kesepakatan baris persis    : {agree['exact_row_agreement']}")
     print(f"kappa gabungan              : {agree['pooled_kappa']}")
     print(f"rujukan tersedia            : {len(ref)}  (menunggu adjudikasi: {len(pending)})")
+    if audit:
+        print(f"kontrol 'yakin' LLM         : {audit['exact_agreement_yakin']}/{audit['n_control_yakin']} "
+              f"cocok persis dengan manusia (95% CI {audit['ci95_yakin']})")
+        print(f"baris RAGU LLM              : {audit['exact_agreement_ragu']}/{audit['n_ragu']} cocok persis")
     print("\nkappa per aspek:")
     for a, v in agree["per_aspect"].items():
         flag = "" if v["interpretable"] else "   <- di bawah ambang, F1 aspek ini TIDAK ditafsirkan"

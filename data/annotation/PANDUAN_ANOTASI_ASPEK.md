@@ -56,3 +56,21 @@ python ml/text/evaluate_aspect_human.py
 Skrip itu menghitung kesepakatan antar-pelabel (Cohen's kappa per aspek), membuat daftar baris
 yang perlu diputuskan orang ketiga, lalu mengukur leksikon vs TF-IDF vs IndoBERT vs label
 gold-LLM pada label manusia - dan menulis hasilnya apa adanya ke `ml/evaluation/`.
+
+## Susunan yang sedang dipakai: LLM + manusia
+
+Pelabel A sudah diisi oleh LLM (`scripts/_llm_aspect_labels_A.py`, 200 klausa, 60 di antaranya
+ditandai RAGU). **Anda adalah pelabel B** dan cukup melabeli `aspect_human_B_sisa.csv` - 120
+klausa: seluruh yang LLM ragukan + 60 kontrol acak dari yang LLM yakini. Anda **tidak diberi
+tahu** mana yang mana, dan memang tidak boleh tahu: itulah yang membuat sampel kontrolnya sah.
+
+Aturannya sama persis. Buka `label_aspek.html`, muat `aspect_human_B_sisa.csv`, labeli, unduh -
+hasilnya otomatis bernama `aspect_human_B_sisa_done.csv`. Lalu:
+
+```
+python ml/text/evaluate_aspect_human.py
+```
+
+Rujukan evaluasi adalah label **Anda**; label LLM hanya menjadi satu pembanding di tabel.
+Kalau sempat melabeli 200 baris penuh (`aspect_human_B.csv`), skrip yang sama memakai itu dan
+hasilnya lebih kuat.

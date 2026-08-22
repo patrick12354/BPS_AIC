@@ -259,7 +259,22 @@ Perangkatnya ada di repositori dan dapat dijalankan siapa pun:
 Baris "label gold-LLM sebagai pendekatan" adalah kuncinya: ia mengukur seberapa jauh gold lama
 sendiri cocok dengan manusia, sehingga tafsir (a) dan (b) dapat dibedakan dengan angka.
 
-**Status saat kartu ini ditulis: paket tersusun, pelabelan belum dijalankan.** Begitu selesai,
+**Susunan yang dijalankan, dan kenapa ia lebih lemah dari yang ideal.** Pelabel A adalah LLM
+(`scripts/_llm_aspect_labels_A.py` - setiap label beserta bendera RAGU/yakin tercatat di kode,
+bukan hanya di CSV, dan gold ADR-017 tidak dilihat saat melabeli: 60 RAGU, 140 yakin). Pelabel B
+adalah manusia pada **subset 120 klausa: seluruh 60 RAGU + 60 kontrol acak dari yang yakin**,
+tanpa melihat label maupun bendera LLM (`aspect_human_B_sisa.csv`). Evaluator mengenali susunan
+ini dari bendera dan berperilaku berbeda: **rujukan = label manusia saja**, label LLM dilaporkan
+sebagai pendekatan `llm_annotator_a`, dan sampel kontrol menaksir seberapa sering "yakin" LLM
+cocok persis dengan manusia - dengan selang kepercayaan Wilson 95%, bukan satu angka.
+
+Ini bukan anotasi dua manusia independen, dan tidak akan disebut demikian. Yang ia berikan:
+(1) angka F1 aspek pada 120 klausa **berlabel manusia** untuk leksikon / TF-IDF / IndoBERT /
+gold-LLM / LLM-anotator, dan (2) taksiran terukur tentang apakah 80 baris "yakin" yang tidak
+diperiksa manusia layak dipercaya. Bila tim punya waktu, jalan yang lebih kuat tetap terbuka:
+pelabel B melabeli 200 baris penuh, dan skrip yang sama menghitung ulang tanpa perubahan.
+
+**Status saat kartu ini ditulis: label LLM selesai, pelabelan manusia belum.** Begitu selesai,
 tabel hasilnya ditempel di sini apa pun arahnya - termasuk bila IndoBERT tetap tidak unggul.
 Sampai saat itu, klaim aspek tetap seperti di §4.3: **TIDAK LULUS**.
 
